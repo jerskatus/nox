@@ -1,0 +1,274 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Check, Info, Play, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CatalogRow } from "@/components/catalog/row";
+import { watchPath } from "@/components/catalog/poster-card";
+import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { defaultVideoId, fetchCatalog, fetchMeta, videoTitle } from "@/lib/stremio/client";
+import { CINEMETA_URL } from "@/lib/stremio/urls";
+import type { Meta, Video } from "@/lib/stremio/types";
+import { useEnabledAddons } from "@/stores/addons";
+import { useLibraryStore } from "@/stores/library";
+import { cn, decodeId, formatRating } from "@/lib/utils";
+
+export const Route = createFileRoute("/title/$type/$id")({
+  loader: async ({ params }) => {
+    const type = params.type;
+    const id = decodeId(params.id);
+    if (id.startsWith("tt")) {
+      try {
+        const meta = await fetchMeta(
+          [
+            {
+              transportUrl: CINEMETA_URL,
+              manifest: {
+                id: "com.linvo.cinemeta",
+                name: "Cinemeta",
+                types: ["movie", "series"],
+                resources: ["meta"],
+                catalogs: [],
+                idPrefixes: ["tt"],
+              },
+              enabled: true,
+              installedAt: 0,
+            },
+          ],
+          type,
+          id,
+        );
+        return { meta };
+      } catch {
+        return { meta: null as Meta | null };
+      }
+    }
+    return { meta: null as Meta | null };
+  },
+  component: TitlePage,
+});
+
+function TitlePage() {
+  const { type, id: rawId } = Route.useParams();
+  const id = decodeId(rawId);
+  const preloaded = Route.useLoaderData().meta;
+  const addons = useEnabledAddons();
+
+  const metaQuery = useQuery({
+    queryKey: ["meta", type, id, addons.map((a) => a.transportUrl).join("|")],
+    queryFn: () => fetchMeta(addons, type, id),
+    initialData: preloaded ?? undefined,
+    enabled: !preloaded,
+  });
+
+  const meta = metaQuery.data ?? preloaded;
+
+  if (metaQuery.isLoading && !meta) {
+    return (
+      <main className="pt-16">
+        <Skeleton className="h-[60vh] w-full rounded-none" />
+      </main>
+    );
+  }
+
+  if (!meta) {
+    return (
+      <main className="px-6 pt-32 text-center">
+        <Info className="mx-auto mb-3 size-8 text-muted" />
+        <h1 className="text-2xl font-semibold">Title not found</h1>
+        <p className="mt-2 text-muted">No installed add-on returned metadata for this item.</p>
+        <Link to="/addons" className="mt-4 inline-block text-sm underline">
+          Manage add-ons
+        </Link>
+      </main>
+    );
+  }
+
+  return <TitleBody meta={meta} />;
+}
+
+function TitleBody({ meta }: { meta: Meta }) {
+  const inList = useLibraryStore((s) => s.list.some((e) => e.id === meta.id));
+  const toggleList = useLibraryStore((s) => s.toggleList);
+  const progress = useLibraryStore((s) => s.progress.find((p) => p.id === meta.id));
+  const rating = formatRating(meta.imdbRating);
+  const genres = (meta.genres ?? meta.genre ?? []).slice(0, 6);
+  const cast = Array.isArray(meta.cast) ? meta.cast.slice(0, 8) : meta.cast ? [meta.cast] : [];
+  const videos = meta.videos ?? [];
+  const seasons = useMemo(() => {
+    const set = new Set<number>();
+    for (const video of videos) {
+      if (typeof video.season === "number") set.add(video.season);
+    }
+    return [...set].sort((a, b) => a - b);
+  }, [videos]);
+  const [season, setSeason] = useState(() => {
+    if (progress?.season) return progress.season;
+    return seasons.find((s) => s > 0) ?? seasons[0] ?? 1;
+  });
+  const episodes = videos
+    .filter((v) => (v.season ?? 0) === season)
+    .sort((a, b) => (a.episode ?? a.number ?? 0) - (b.episode ?? b.number ?? 0));
+
+  const similar = useQuery({
+    queryKey: ["similar", meta.type, meta.genres?.[0]],
+    enabled: Boolean(meta.genres?.[0]),
+    queryFn: () => fetchCatalog(CINEMETA_URL, meta.type, "top", { genre: meta.genres![0] }),
+  });
+  const trailer = trailerYoutubeId(meta);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const playId = progress?.videoId ?? defaultVideoId(meta);
+  const play = watchPath(meta, playId === meta.id ? undefined : playId, { auto: Boolean(progress) });
+
+  return (
+    <main>
+      <section className="relative min-h-[70vh] overflow-hidden">
+        {meta.background || meta.poster ? (
+          <img
+            src={meta.background || meta.poster}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : null}
+        <div className="hero-side absolute inset-0" />
+        <div className="hero-mask absolute inset-0" />
+        <div className="relative z-10 flex min-h-[70vh] flex-col justify-end px-4 pb-10 pt-28 sm:px-8 lg:px-12">
+          <div className="max-w-2xl">
+            {meta.logo ? (
+              <img src={meta.logo} alt={meta.name} className="mb-4 h-16 w-auto max-w-sm object-contain sm:h-24" />
+            ) : (
+              <h1 className="mb-3 font-display text-5xl leading-none sm:text-7xl">{meta.name}</h1>
+            )}
+            <p className="mb-3 text-sm text-muted">
+              {[
+                meta.year ?? meta.releaseInfo,
+                rating ? `${rating} IMDb` : null,
+                meta.runtime,
+                genres.join(" · "),
+              ]
+                .filter(Boolean)
+                .join("  ·  ")}
+            </p>
+            {meta.description ? (
+              <p className="mb-6 max-w-xl text-sm text-fg/90 sm:text-base">{meta.description}</p>
+            ) : null}
+            {cast.length > 0 ? (
+              <p className="mb-6 text-sm text-muted">
+                <span className="text-subtle">Cast </span>
+                {cast.join(", ")}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <Button asChild variant="play" size="lg">
+                <Link {...play}>
+                  <Play className="size-5 fill-current" />
+                  {progress ? "Resume" : "Play"}
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() =>
+                  toggleList({
+                    id: meta.id,
+                    type: meta.type,
+                    name: meta.name,
+                    poster: meta.poster,
+                    background: meta.background,
+                    logo: meta.logo,
+                    description: meta.description,
+                    year: meta.year,
+                    releaseInfo: meta.releaseInfo,
+                    imdbRating: meta.imdbRating,
+                    genres: meta.genres,
+                    posterShape: meta.posterShape,
+                    runtime: meta.runtime,
+                  })
+                }
+              >
+                {inList ? <Check className="size-5" /> : <Plus className="size-5" />}
+                {inList ? "On my list" : "My list"}
+              </Button>
+              {trailer ? (
+                <Button variant="outline" size="lg" onClick={() => setTrailerOpen(true)}>
+                  Trailer
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {episodes.length > 0 ? (
+        <section className="px-4 py-10 sm:px-8 lg:px-12">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Episodes</h2>
+            {seasons.length > 1 ? (
+              <select
+                value={season}
+                onChange={(e) => setSeason(Number(e.target.value))}
+                className="h-11 rounded-md border border-border bg-elevated px-3 text-sm"
+                aria-label="Season"
+              >
+                {seasons.map((s) => (
+                  <option key={s} value={s}>
+                    {s === 0 ? "Specials" : `Season ${s}`}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+          <div className="grid gap-3">
+            {episodes.map((episode) => (
+              <EpisodeRow key={episode.id} meta={meta} episode={episode} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="pb-16">
+        {similar.data && similar.data.length > 0 ? (
+          <CatalogRow title="More like this" items={similar.data.filter((item) => item.id !== meta.id)} />
+        ) : null}
+      </div>
+      {trailerOpen && trailer ? (
+        <TrailerModal ytId={trailer} title={meta.name} onClose={() => setTrailerOpen(false)} />
+      ) : null}
+    </main>
+  );
+}
+
+function EpisodeRow({ meta, episode }: { meta: Meta; episode: Video }) {
+  const href = watchPath(meta, episode.id);
+  const n = episode.episode ?? episode.number;
+  return (
+    <Link
+      {...href}
+      className={cn(
+        "flex gap-3 rounded-md bg-surface p-2 transition-colors duration-150 touch-manipulation hover:bg-elevated sm:p-3",
+      )}
+    >
+      {episode.thumbnail ? (
+        <img
+          src={episode.thumbnail}
+          alt=""
+          className="h-20 w-36 shrink-0 rounded-sm object-cover sm:h-24 sm:w-44"
+        />
+      ) : (
+        <div className="grid h-20 w-36 shrink-0 place-items-center rounded-sm bg-elevated text-2xl text-subtle">
+          {n ?? ""}
+        </div>
+      )}
+      <div className="min-w-0 py-1">
+        <p className="truncate font-medium">
+          {n ? `${n}. ` : ""}
+          {videoTitle(episode)}
+        </p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted">
+          {episode.overview ?? episode.description ?? ""}
+        </p>
+      </div>
+    </Link>
+  );
+}

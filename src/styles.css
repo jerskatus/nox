@@ -1,0 +1,122 @@
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bebas Neue", "Outfit", sans-serif;
+
+  --color-bg: #000000;
+  --color-surface: #141414;
+  --color-elevated: #1f1f1f;
+  --color-fg: #f5f5f5;
+  --color-muted: #b3b3b3;
+  --color-subtle: #808080;
+  --color-accent: #e50914;
+  --color-accent-hover: #f40612;
+  --color-border: #2a2a2a;
+  --color-overlay: rgb(0 0 0 / 55%);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --aspect-poster: 2 / 3;
+  --aspect-wide: 16 / 9;
+}
+
+@custom-variant fine-hover (@media (hover: hover) and (pointer: fine));
+
+:root {
+  --header-h: calc(env(safe-area-inset-top, 0px) + 4rem);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --header-h: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: rgb(255 255 255 / 14%);
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-fg);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hero-mask {
+    background: linear-gradient(
+      to top,
+      var(--color-bg) 0%,
+      rgb(0 0 0 / 72%) 28%,
+      rgb(0 0 0 / 18%) 62%,
+      transparent 100%
+    );
+  }
+
+  .hero-side {
+    background: linear-gradient(
+      to right,
+      rgb(0 0 0 / 88%) 0%,
+      rgb(0 0 0 / 42%) 42%,
+      transparent 72%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

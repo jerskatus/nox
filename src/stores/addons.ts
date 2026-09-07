@@ -1,0 +1,71 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { DEFAULT_ADDONS } from "@/lib/stremio/defaults";
+import type { InstalledAddon, Manifest } from "@/lib/stremio/types";
+
+type AddonState = {
+  hydrated: boolean;
+  addons: InstalledAddon[];
+  setHydrated: (value: boolean) => void;
+  install: (transportUrl: string, manifest: Manifest) => void;
+  uninstall: (transportUrl: string) => void;
+  toggle: (transportUrl: string) => void;
+  replaceManifest: (transportUrl: string, manifest: Manifest) => void;
+  reset: () => void;
+};
+
+export const useAddonStore = create<AddonState>()(
+  persist(
+    (set, get) => ({
+      hydrated: false,
+      addons: DEFAULT_ADDONS,
+      setHydrated: (value) => set({ hydrated: value }),
+      install: (transportUrl, manifest) => {
+        const existing = get().addons.filter((addon) => addon.manifest.id !== manifest.id);
+        set({
+          addons: [
+            {
+              transportUrl,
+              manifest,
+              enabled: true,
+              installedAt: Date.now(),
+            },
+            ...existing,
+          ],
+        });
+      },
+      uninstall: (transportUrl) =>
+        set({ addons: get().addons.filter((addon) => addon.transportUrl !== transportUrl) }),
+      toggle: (transportUrl) =>
+        set({
+          addons: get().addons.map((addon) =>
+            addon.transportUrl === transportUrl ? { ...addon, enabled: !addon.enabled } : addon,
+          ),
+        }),
+      replaceManifest: (transportUrl, manifest) =>
+        set({
+          addons: get().addons.map((addon) =>
+            addon.transportUrl === transportUrl ? { ...addon, manifest } : addon,
+          ),
+        }),
+      reset: () => set({ addons: DEFAULT_ADDONS }),
+    }),
+    {
+      name: "nox-addons",
+      skipHydration: true,
+      partialize: (state) => ({ addons: state.addons }),
+      merge: (persisted, current) => {
+        const stored = (persisted as { addons?: InstalledAddon[] } | undefined)?.addons;
+        if (!stored) return current;
+        const have = new Set(stored.map((addon) => addon.manifest.id));
+        const missing = DEFAULT_ADDONS.filter((addon) => !have.has(addon.manifest.id));
+        return { ...current, addons: [...stored, ...missing] };
+      },
+    },
+  ),
+);
+
+export function useEnabledAddons() {
+  const addons = useAddonStore((s) => s.addons);
+  return addons.filter((addon) => addon.enabled);
+}
