@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
-      { name: "description", content: "Movies, TV, and YouTube — one player for every Stremio add-on." },
+      { name: "description", content: "Movies and TV — one player for every Stremio add-on." },
       { name: "theme-color", content: "#000000" },
     ],
     links: [

@@ -5,7 +5,6 @@ import {
   OPENSUBTITLES_URL,
   STREAMING_CATALOGS_URL,
   WATCHHUB_URL,
-  YOUTUBE_URL,
 } from "./urls";
 
 const CINEMETA_MANIFEST: Manifest = {
@@ -95,24 +94,6 @@ const OPENSUBTITLES_MANIFEST: Manifest = {
   idPrefixes: ["tt"],
 };
 
-const YOUTUBE_MANIFEST: Manifest = {
-  id: "com.linvo.stremiochannels",
-  version: "1.30.7",
-  name: "YouTube",
-  description: "Watch YouTube channels inside Nox.",
-  resources: ["catalog", "meta"],
-  types: ["channel"],
-  idPrefixes: ["yt_id:"],
-  catalogs: [
-    {
-      type: "channel",
-      id: "top",
-      name: "Popular",
-      extra: [{ name: "search" }, { name: "skip" }, { name: "genre" }],
-    },
-  ],
-};
-
 const WATCHHUB_MANIFEST: Manifest = {
   id: "org.stremio.watchhub",
   version: "1.0.0",
@@ -124,11 +105,11 @@ const WATCHHUB_MANIFEST: Manifest = {
   idPrefixes: ["tt"],
 };
 
-const STREAMING_CATALOGS_MANIFEST: Manifest = {
+export const STREAMING_CATALOGS_MANIFEST: Manifest = {
   id: "pw.ers.netflix-catalog",
   version: "0.1.0",
   name: "Streaming Catalogs",
-  description: "Trending movies and series on Netflix, Max, Disney+, Prime Video and Apple TV+.",
+  description: "Trending movies and series on Netflix, Max, Disney+, Prime Video, Apple TV+ and more.",
   resources: ["catalog"],
   types: ["movie", "series"],
   idPrefixes: ["tt"],
@@ -143,6 +124,26 @@ const STREAMING_CATALOGS_MANIFEST: Manifest = {
     { type: "series", id: "amp", name: "Prime Video" },
     { type: "movie", id: "atp", name: "Apple TV+" },
     { type: "series", id: "atp", name: "Apple TV+" },
+    { type: "movie", id: "pmp", name: "Paramount+" },
+    { type: "series", id: "pmp", name: "Paramount+" },
+    { type: "movie", id: "hlu", name: "Hulu" },
+    { type: "series", id: "hlu", name: "Hulu" },
+    { type: "movie", id: "pcp", name: "Peacock" },
+    { type: "series", id: "pcp", name: "Peacock" },
+    { type: "movie", id: "cru", name: "Crunchyroll" },
+    { type: "series", id: "cru", name: "Crunchyroll" },
+    { type: "movie", id: "stz", name: "Starz" },
+    { type: "series", id: "stz", name: "Starz" },
+    { type: "movie", id: "mbi", name: "Mubi" },
+    { type: "movie", id: "shd", name: "Shudder" },
+    { type: "series", id: "shd", name: "Shudder" },
+    { type: "movie", id: "bbo", name: "BritBox" },
+    { type: "series", id: "bbo", name: "BritBox" },
+    { type: "series", id: "dpe", name: "Discovery+" },
+    { type: "movie", id: "cts", name: "Curiosity Stream" },
+    { type: "series", id: "cts", name: "Curiosity Stream" },
+    { type: "movie", id: "sst", name: "SkyShowtime" },
+    { type: "series", id: "sst", name: "SkyShowtime" },
   ],
 };
 
@@ -154,7 +155,6 @@ export const DEFAULT_ADDONS: InstalledAddon[] = [
   seed(CINEMETA_URL, CINEMETA_MANIFEST),
   LOCAL_OPEN_ADDON,
   seed(STREAMING_CATALOGS_URL, STREAMING_CATALOGS_MANIFEST),
-  seed(YOUTUBE_URL, YOUTUBE_MANIFEST),
   seed(OPENSUBTITLES_URL, OPENSUBTITLES_MANIFEST),
   seed(WATCHHUB_URL, WATCHHUB_MANIFEST),
 ];

@@ -9,7 +9,7 @@ import { useAddonStore } from "@/stores/addons";
 
 export const Route = createFileRoute("/browse/$type")({
   beforeLoad: ({ params }) => {
-    if (params.type === "channel") throw redirect({ to: "/youtube" });
+    if (params.type === "channel") throw redirect({ to: "/" });
   },
   component: BrowsePage,
 });

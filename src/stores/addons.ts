@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { DEFAULT_ADDONS } from "@/lib/stremio/defaults";
+import { DEFAULT_ADDONS, STREAMING_CATALOGS_MANIFEST } from "@/lib/stremio/defaults";
+import { STREAMING_CATALOGS_URL } from "@/lib/stremio/urls";
 import type { InstalledAddon, Manifest } from "@/lib/stremio/types";
 
 type AddonState = {
@@ -57,9 +58,16 @@ export const useAddonStore = create<AddonState>()(
       merge: (persisted, current) => {
         const stored = (persisted as { addons?: InstalledAddon[] } | undefined)?.addons;
         if (!stored) return current;
-        const have = new Set(stored.map((addon) => addon.manifest.id));
+        const migrated = stored
+          .filter((addon) => addon.manifest.id !== "com.linvo.stremiochannels")
+          .map((addon) =>
+            addon.manifest.id === "pw.ers.netflix-catalog"
+              ? { ...addon, transportUrl: STREAMING_CATALOGS_URL, manifest: STREAMING_CATALOGS_MANIFEST }
+              : addon,
+          );
+        const have = new Set(migrated.map((addon) => addon.manifest.id));
         const missing = DEFAULT_ADDONS.filter((addon) => !have.has(addon.manifest.id));
-        return { ...current, addons: [...stored, ...missing] };
+        return { ...current, addons: [...migrated, ...missing] };
       },
     },
   ),

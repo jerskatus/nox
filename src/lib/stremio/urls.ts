@@ -2,10 +2,9 @@ import type { InstalledAddon, Manifest, ManifestResource } from "./types";
 
 export const CINEMETA_URL = "https://v3-cinemeta.strem.io/manifest.json";
 export const OPENSUBTITLES_URL = "https://opensubtitles-v3.strem.io/manifest.json";
-export const YOUTUBE_URL = "https://v3-channels.strem.io/manifest.json";
 export const WATCHHUB_URL = "https://watchhub.strem.io/manifest.json";
 export const STREAMING_CATALOGS_URL =
-  "https://7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/manifest.json";
+  "https://7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGhibSxkbnAsYW1wLGF0cCxwbXAsaGx1LHBjcCxjcnUsc3R6LG1iaSxzaGQsYmJvLGRwZSxjdHMsc3N0OjpVUw==/manifest.json";
 
 export function normalizeTransportUrl(raw: string) {
   let url = raw.trim();

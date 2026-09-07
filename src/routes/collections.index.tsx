@@ -9,7 +9,7 @@ function CollectionsIndex() {
   return (
     <main className="px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8 lg:px-12">
       <h1 className="text-3xl font-semibold">Collections</h1>
-      <p className="mt-2 mb-8 text-muted">Watch universes in order — MCU, Ghibli, Wick, and more.</p>
+      <p className="mt-2 mb-8 text-muted">Watch universes in order — MCU, Ghibli, Wick, and a whole lot more.</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {COLLECTIONS.map((item) => (
           <Link

@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 type NavItem =
   | { to: "/"; label: string }
   | { to: "/browse/$type"; params: { type: string }; label: string }
-  | { to: "/youtube"; label: string }
   | { to: "/collections"; label: string }
   | { to: "/list"; label: string }
   | { to: "/addons"; label: string };
@@ -17,7 +16,6 @@ const LINKS: NavItem[] = [
   { to: "/browse/$type", params: { type: "series" }, label: "TV Shows" },
   { to: "/browse/$type", params: { type: "movie" }, label: "Movies" },
   { to: "/collections", label: "Collections" },
-  { to: "/youtube", label: "YouTube" },
   { to: "/list", label: "My List" },
   { to: "/addons", label: "Add-ons" },
 ];
@@ -69,7 +67,7 @@ export function Nav() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300",
-          solid || open || pathname === "/search" || pathname === "/youtube" || pathname === "/options" || pathname.startsWith("/collections")
+          solid || open || pathname === "/search" || pathname === "/options" || pathname.startsWith("/collections")
             ? "bg-bg"
             : "bg-linear-to-b from-bg/80 to-transparent",
         )}

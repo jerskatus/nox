@@ -15,7 +15,7 @@ export function ProviderRow() {
             className="flex w-[4.75rem] shrink-0 flex-col items-center gap-2 touch-manipulation"
           >
             <span
-              className="relative grid size-[4.5rem] place-items-center overflow-hidden rounded-2xl shadow-lg ring-1 ring-fg/20"
+              className="relative grid size-[4.5rem] place-items-center overflow-hidden rounded-2xl shadow-lg"
               style={{ backgroundColor: provider.bg }}
             >
               <ProviderMark provider={provider} />

@@ -3,7 +3,6 @@ import { type ReactNode, useEffect } from "react";
 import { Nav } from "./nav";
 import { startTvRemote } from "@/lib/tv-remote";
 import { useAddonStore } from "@/stores/addons";
-import { useGoogleStore } from "@/stores/google";
 import { useLibraryStore } from "@/stores/library";
 import { isThemeId, useSettingsStore, type ThemeId } from "@/stores/settings";
 
@@ -24,7 +23,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
     void Promise.resolve(useLibraryStore.persist.rehydrate());
     void Promise.resolve(useSettingsStore.persist.rehydrate());
-    void Promise.resolve(useGoogleStore.persist.rehydrate());
   }, []);
 
   useEffect(() => {

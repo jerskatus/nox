@@ -41,7 +41,7 @@ function ProviderPage() {
     <main className="px-4 pb-16 pt-[calc(var(--header-h)+0.75rem)] sm:px-8 lg:px-12">
       <div className="mb-6 flex items-center gap-4">
         <span
-          className="relative grid size-14 place-items-center overflow-hidden rounded-2xl ring-1 ring-fg/15"
+          className="relative grid size-14 place-items-center overflow-hidden rounded-2xl"
           style={{ backgroundColor: provider.bg }}
         >
           <ProviderMark provider={provider} />

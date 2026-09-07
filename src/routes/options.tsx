@@ -11,7 +11,6 @@ import {
   type SubtitleSize,
   type ThemeId,
 } from "@/stores/settings";
-import { GoogleAccountCard } from "@/components/google-connect";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/options")({
@@ -45,11 +44,7 @@ function OptionsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8">
       <h1 className="text-3xl font-semibold">Options</h1>
-      <p className="mt-2 mb-10 text-muted">Playback, search, Google, and how Nox looks.</p>
-
-      <Section title="Google" flush>
-        <GoogleAccountCard />
-      </Section>
+      <p className="mt-2 mb-10 text-muted">Playback, search, and how Nox looks.</p>
 
       <Section title="Playback">
         <Row
@@ -236,16 +231,11 @@ function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; labe
       aria-label={label}
       onClick={onClick}
       className={cn(
-        "relative h-7 w-12 rounded-full transition-colors duration-150",
-        on ? "bg-accent" : "bg-elevated",
+        "inline-flex h-8 w-14 shrink-0 items-center overflow-hidden rounded-full p-1 transition-colors duration-200",
+        on ? "justify-end bg-accent" : "justify-start bg-elevated",
       )}
     >
-      <span
-        className={cn(
-          "absolute top-0.5 size-6 rounded-full bg-fg transition-transform duration-150",
-          on ? "translate-x-5" : "translate-x-0.5",
-        )}
-      />
+      <span className="block size-6 shrink-0 rounded-full bg-fg shadow-sm" />
     </button>
   );
 }

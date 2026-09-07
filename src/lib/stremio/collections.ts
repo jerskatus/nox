@@ -351,6 +351,659 @@ export const COLLECTIONS: Collection[] = [
     movie("tt2386490", "The Hidden World"),
     movie("tt26753003", "How to Train Your Dragon (2025)"),
   ]),
+  pack("halloween", "Halloween", "The Shape", [
+    movie("tt0077651", "Halloween (1978)"),
+    movie("tt0078767", "Halloween II"),
+    movie("tt0085636", "Halloween III"),
+    movie("tt0113253", "Halloween: The Curse of Michael Myers"),
+    movie("tt1502407", "Halloween (2018)"),
+    movie("tt10665338", "Halloween Kills"),
+    movie("tt10665342", "Halloween Ends"),
+  ]),
+  pack("friday-13", "Friday the 13th", "Ki ki ki, ma ma ma", [
+    movie("tt0080761", "Friday the 13th"),
+    movie("tt0082418", "Part 2"),
+    movie("tt0082419", "Part III"),
+    movie("tt0087298", "The Final Chapter"),
+    movie("tt0756683", "Friday the 13th (2009)"),
+  ]),
+  pack("elm-street", "A Nightmare on Elm Street", "Don't fall asleep", [
+    movie("tt0087800", "A Nightmare on Elm Street"),
+    movie("tt0089686", "Freddy's Revenge"),
+    movie("tt0093629", "Dream Warriors"),
+    movie("tt0111686", "New Nightmare"),
+    movie("tt1179056", "A Nightmare on Elm Street (2010)"),
+  ]),
+  pack("saw", "Saw", "Want to play a game?", [
+    movie("tt0387564", "Saw"),
+    movie("tt0432348", "Saw II"),
+    movie("tt0489270", "Saw III"),
+    movie("tt0890870", "Saw IV"),
+    movie("tt1477076", "Saw 3D"),
+    movie("tt8291806", "Spiral"),
+    movie("tt21807222", "Saw X"),
+  ]),
+  pack("final-destination", "Final Destination", "Death's design", [
+    movie("tt0195714", "Final Destination"),
+    movie("tt0309593", "Final Destination 2"),
+    movie("tt0414982", "Final Destination 3"),
+    movie("tt1144884", "The Final Destination"),
+    movie("tt1520498", "Final Destination 5"),
+    movie("tt9619824", "Bloodlines"),
+  ]),
+  pack("die-hard", "Die Hard", "Yippee-ki-yay", [
+    movie("tt0095016", "Die Hard"),
+    movie("tt0099423", "Die Hard 2"),
+    movie("tt0112864", "Die Hard with a Vengeance"),
+    movie("tt0337978", "Live Free or Die Hard"),
+    movie("tt1606378", "A Good Day to Die Hard"),
+  ]),
+  pack("mad-max", "Mad Max", "Witness me", [
+    movie("tt0079501", "Mad Max"),
+    movie("tt0082694", "The Road Warrior"),
+    movie("tt0089530", "Beyond Thunderdome"),
+    movie("tt1392190", "Fury Road"),
+    movie("tt12037194", "Furiosa: A Mad Max Saga"),
+  ]),
+  pack("shrek", "Shrek", "Somebody once told me", [
+    movie("tt0126029", "Shrek"),
+    movie("tt0298148", "Shrek 2"),
+    movie("tt0413267", "Shrek the Third"),
+    movie("tt0892791", "Shrek Forever After"),
+    movie("tt0327084", "Puss in Boots"),
+    movie("tt3915174", "The Last Wish"),
+  ]),
+  pack("kung-fu-panda", "Kung Fu Panda", "Skadoosh", [
+    movie("tt0441773", "Kung Fu Panda"),
+    movie("tt1302011", "Kung Fu Panda 2"),
+    movie("tt2267968", "Kung Fu Panda 3"),
+    movie("tt21692408", "Kung Fu Panda 4"),
+  ]),
+  pack("despicable", "Despicable Me", "Bee-do bee-do", [
+    movie("tt1323594", "Despicable Me"),
+    movie("tt1690953", "Despicable Me 2"),
+    movie("tt3469046", "Despicable Me 3"),
+    movie("tt7510222", "Despicable Me 4"),
+    movie("tt2293640", "Minions"),
+    movie("tt5113044", "The Rise of Gru"),
+  ]),
+  pack("transformers", "Transformers", "More than meets the eye", [
+    movie("tt0418279", "Transformers"),
+    movie("tt1055369", "Revenge of the Fallen"),
+    movie("tt1399103", "Dark of the Moon"),
+    movie("tt2109248", "Age of Extinction"),
+    movie("tt3371366", "The Last Knight"),
+    movie("tt5090568", "Bumblebee"),
+    movie("tt5090562", "Rise of the Beasts"),
+  ]),
+  pack("mib", "Men in Black", "You know the drill", [
+    movie("tt0119654", "Men in Black"),
+    movie("tt0120912", "Men in Black II"),
+    movie("tt1409024", "Men in Black 3"),
+    movie("tt2283336", "International"),
+  ]),
+  pack("narnia", "The Chronicles of Narnia", "Aslan", [
+    movie("tt0363771", "The Lion, the Witch and the Wardrobe"),
+    movie("tt0499448", "Prince Caspian"),
+    movie("tt0980970", "The Voyage of the Dawn Treader"),
+  ]),
+  pack("twilight", "Twilight", "Team whoever", [
+    movie("tt1099212", "Twilight"),
+    movie("tt1259571", "New Moon"),
+    movie("tt1324999", "Eclipse"),
+    movie("tt1325004", "Breaking Dawn – Part 1"),
+    movie("tt1673434", "Breaking Dawn – Part 2"),
+  ]),
+  pack("taken", "Taken", "I will find you", [
+    movie("tt0936501", "Taken"),
+    movie("tt1397280", "Taken 2"),
+    movie("tt1395366", "Taken 3"),
+  ]),
+  pack("equalizer", "The Equalizer", "McCall", [
+    movie("tt0455944", "The Equalizer"),
+    movie("tt3766352", "The Equalizer 2"),
+    movie("tt17076046", "The Equalizer 3"),
+  ]),
+  pack("godfather", "The Godfather", "An offer you can't refuse", [
+    movie("tt0068646", "The Godfather"),
+    movie("tt0071562", "The Godfather Part II"),
+    movie("tt0099674", "The Godfather Part III"),
+  ]),
+  pack("tarantino", "Tarantino", "Written and directed by", [
+    movie("tt0105236", "Reservoir Dogs"),
+    movie("tt0110912", "Pulp Fiction"),
+    movie("tt0119396", "Jackie Brown"),
+    movie("tt0266697", "Kill Bill: Vol. 1"),
+    movie("tt0378194", "Kill Bill: Vol. 2"),
+    movie("tt0361748", "Inglourious Basterds"),
+    movie("tt1853728", "Django Unchained"),
+    movie("tt3460252", "The Hateful Eight"),
+    movie("tt7131622", "Once Upon a Time in Hollywood"),
+  ]),
+  pack("nolan", "Christopher Nolan", "Mind-benders", [
+    movie("tt0209144", "Memento"),
+    movie("tt0482571", "The Prestige"),
+    movie("tt0468569", "The Dark Knight"),
+    movie("tt1375666", "Inception"),
+    movie("tt0816692", "Interstellar"),
+    movie("tt5013056", "Dunkirk"),
+    movie("tt6723592", "Tenet"),
+    movie("tt15398776", "Oppenheimer"),
+  ]),
+  pack("fincher", "David Fincher", "Precision", [
+    movie("tt0114369", "Se7en"),
+    movie("tt0137523", "Fight Club"),
+    movie("tt0443706", "Zodiac"),
+    movie("tt1285016", "The Social Network"),
+    movie("tt2267998", "Gone Girl"),
+    movie("tt0119174", "The Game"),
+  ]),
+  pack("scorsese", "Martin Scorsese", "The streets", [
+    movie("tt0075314", "Taxi Driver"),
+    movie("tt0081398", "Raging Bull"),
+    movie("tt0099685", "Goodfellas"),
+    movie("tt0112641", "Casino"),
+    movie("tt0407887", "The Departed"),
+    movie("tt0993846", "The Wolf of Wall Street"),
+    movie("tt1302006", "The Irishman"),
+    movie("tt5537002", "Killers of the Flower Moon"),
+  ]),
+  pack("spielberg", "Steven Spielberg", "Movie magic", [
+    movie("tt0075860", "Close Encounters"),
+    movie("tt0082971", "Raiders of the Lost Ark"),
+    movie("tt0083866", "E.T."),
+    movie("tt0107290", "Jurassic Park"),
+    movie("tt0108052", "Schindler's List"),
+    movie("tt0120815", "Saving Private Ryan"),
+    movie("tt0264464", "Catch Me If You Can"),
+    movie("tt3691740", "The Fabelmans"),
+  ]),
+  pack("villeneuve", "Denis Villeneuve", "Scale", [
+    movie("tt1454029", "Incendies"),
+    movie("tt3397884", "Sicario"),
+    movie("tt2543164", "Arrival"),
+    movie("tt1856101", "Blade Runner 2049"),
+    movie("tt1160419", "Dune"),
+    movie("tt15239678", "Dune: Part Two"),
+  ]),
+  pack("cameron", "James Cameron", "King of the world", [
+    movie("tt0088247", "The Terminator"),
+    movie("tt0096754", "The Abyss"),
+    movie("tt0103064", "T2"),
+    movie("tt0120338", "Titanic"),
+    movie("tt0499549", "Avatar"),
+    movie("tt1630029", "The Way of Water"),
+  ]),
+  pack("wes-anderson", "Wes Anderson", "Pastel frames", [
+    movie("tt0265666", "The Royal Tenenbaums"),
+    movie("tt0365748", "The Life Aquatic"),
+    movie("tt0838221", "The Darjeeling Limited"),
+    movie("tt1748122", "Moonrise Kingdom"),
+    movie("tt2278388", "The Grand Budapest Hotel"),
+    movie("tt8847718", "The French Dispatch"),
+    movie("tt14230458", "Asteroid City"),
+  ]),
+  pack("edgar-wright", "Edgar Wright", "Cornetto & more", [
+    movie("tt0374900", "Shaun of the Dead"),
+    movie("tt0425112", "Hot Fuzz"),
+    movie("tt1255953", "The World's End"),
+    movie("tt0446029", "Scott Pilgrim vs. the World"),
+    movie("tt3890160", "Baby Driver"),
+    movie("tt9639470", "Last Night in Soho"),
+  ]),
+  pack("coens", "Coen brothers", "A serious man", [
+    movie("tt0101410", "Barton Fink"),
+    movie("tt0118715", "The Big Lebowski"),
+    movie("tt0190590", "O Brother, Where Art Thou?"),
+    movie("tt0477348", "No Country for Old Men"),
+    movie("tt1013753", "A Serious Man"),
+    movie("tt1403865", "True Grit"),
+    movie("tt2042568", "Inside Llewyn Davis"),
+  ]),
+  pack("peele", "Jordan Peele", "Get out", [
+    movie("tt5052448", "Get Out"),
+    movie("tt7784604", "Us"),
+    movie("tt10954984", "Nope"),
+  ]),
+  pack("quiet-place", "A Quiet Place", "Don't make a sound", [
+    movie("tt6644200", "A Quiet Place"),
+    movie("tt8332922", "Part II"),
+    movie("tt16374324", "Day One"),
+  ]),
+  pack("it", "IT", "You'll float too", [
+    movie("tt1396484", "IT"),
+    movie("tt7349950", "IT Chapter Two"),
+  ]),
+  pack("insidious", "Insidious", "The Further", [
+    movie("tt1591095", "Insidious"),
+    movie("tt2226417", "Chapter 2"),
+    movie("tt3195644", "Chapter 3"),
+    movie("tt5726086", "The Last Key"),
+    movie("tt13453006", "The Red Door"),
+  ]),
+  pack("exorcist", "The Exorcist", "The power of Christ", [
+    movie("tt0070047", "The Exorcist"),
+    movie("tt0076009", "Exorcist II"),
+    movie("tt0099528", "The Exorcist III"),
+    movie("tt12921480", "Believer"),
+  ]),
+  pack("before", "Before trilogy", "Sunset to midnight", [
+    movie("tt0112471", "Before Sunrise"),
+    movie("tt0381681", "Before Sunset"),
+    movie("tt2209418", "Before Midnight"),
+  ]),
+  pack("paddington", "Paddington", "Marmalade", [
+    movie("tt1109624", "Paddington"),
+    movie("tt4741306", "Paddington 2"),
+    movie("tt5825250", "Paddington in Peru"),
+  ]),
+  pack("frozen", "Frozen", "Let it go", [
+    movie("tt2294629", "Frozen"),
+    movie("tt4520988", "Frozen II"),
+  ]),
+  pack("lion-king", "The Lion King", "Hakuna Matata", [
+    movie("tt0110357", "The Lion King"),
+    movie("tt0120855", "The Lion King II"),
+    movie("tt6105098", "The Lion King (2019)"),
+    movie("tt27695043", "Mufasa"),
+  ]),
+  pack("stranger-things", "Stranger Things", "Friends don't lie", [
+    series("tt4574334", "Stranger Things"),
+  ]),
+  pack("the-boys", "The Boys", "Homelander", [
+    series("tt1190634", "The Boys"),
+    series("tt1312171", "Gen V"),
+  ]),
+  pack("last-of-us", "The Last of Us", "Endure and survive", [
+    series("tt3581920", "The Last of Us"),
+  ]),
+  pack("fallout", "Fallout", "War never changes", [
+    series("tt12637874", "Fallout"),
+  ]),
+  pack("black-mirror", "Black Mirror", "One more episode", [
+    series("tt2085059", "Black Mirror"),
+  ]),
+  pack("star-trek", "Star Trek", "Boldly go", [
+    movie("tt0079945", "The Motion Picture"),
+    movie("tt0084726", "The Wrath of Khan"),
+    movie("tt0796366", "Star Trek (2009)"),
+    movie("tt1408101", "Into Darkness"),
+    movie("tt2660888", "Beyond"),
+    series("tt0060028", "The Original Series"),
+    series("tt0092455", "The Next Generation"),
+    series("tt3876900", "Strange New Worlds"),
+  ]),
+  pack("doctor-who", "Doctor Who", "Wibbly wobbly", [
+    series("tt0436992", "Doctor Who"),
+  ]),
+  pack("walking-dead", "The Walking Dead", "The ones who live", [
+    series("tt1520211", "The Walking Dead"),
+    series("tt3749900", "Fear the Walking Dead"),
+  ]),
+  pack("28-days", "28 Days Later", "Rage", [
+    movie("tt0289043", "28 Days Later"),
+    movie("tt0463850", "28 Weeks Later"),
+    movie("tt10640346", "28 Years Later"),
+  ]),
+  pack("avatar-atla", "Avatar: The Last Airbender", "The four nations", [
+    series("tt0417299", "Avatar: The Last Airbender"),
+    series("tt1695360", "The Legend of Korra"),
+    movie("tt0499549", "The Last Airbender"),
+  ]),
+  pack("one-piece", "One Piece", "I'm gonna be King of the Pirates", [
+    series("tt0388629", "One Piece"),
+    series("tt11737520", "One Piece (Live)"),
+  ]),
+  pack("naruto", "Naruto", "Believe it", [
+    series("tt0409591", "Naruto"),
+    series("tt0988824", "Naruto: Shippuden"),
+    series("tt2300685", "Boruto"),
+  ]),
+  pack("aot", "Attack on Titan", "Dedicate your hearts", [
+    series("tt2560140", "Attack on Titan"),
+  ]),
+  pack("demon-slayer", "Demon Slayer", "Breathing styles", [
+    series("tt9335498", "Demon Slayer"),
+    movie("tt11032374", "Mugen Train"),
+    movie("tt30418927", "Infinity Castle"),
+  ]),
+  pack("cowboy-bebop", "Cowboy Bebop", "See you, space cowboy", [
+    series("tt0213338", "Cowboy Bebop"),
+    movie("tt0275277", "The Movie"),
+  ]),
+  pack("firefly", "Firefly", "I aim to misbehave", [
+    series("tt0303461", "Firefly"),
+    movie("tt0379786", "Serenity"),
+  ]),
+  pack("x-files", "The X-Files", "The truth is out there", [
+    series("tt0106179", "The X-Files"),
+    movie("tt0120902", "Fight the Future"),
+    movie("tt0443701", "I Want to Believe"),
+  ]),
+  pack("buffy", "Buffy", "Slayer", [
+    series("tt0118276", "Buffy the Vampire Slayer"),
+    series("tt0162065", "Angel"),
+  ]),
+  pack("office", "The Office", "That's what she said", [
+    series("tt0386674", "The Office (US)"),
+    series("tt0290978", "The Office (UK)"),
+  ]),
+  pack("parks", "Parks and Recreation", "Treat yo self", [
+    series("tt1266020", "Parks and Recreation"),
+  ]),
+  pack("friends", "Friends", "Pivot", [
+    series("tt0108778", "Friends"),
+  ]),
+  pack("seinfeld", "Seinfeld", "A show about nothing", [
+    series("tt0098904", "Seinfeld"),
+  ]),
+  pack("yellowstone", "Yellowstone", "Duttons", [
+    series("tt4236770", "Yellowstone"),
+    series("tt13991232", "1883"),
+    series("tt18335752", "1923"),
+  ]),
+  pack("fargo", "Fargo", "This is a true story", [
+    movie("tt0116282", "Fargo"),
+    series("tt2802850", "Fargo"),
+  ]),
+  pack("true-detective", "True Detective", "Time is a flat circle", [
+    series("tt2356777", "True Detective"),
+  ]),
+  pack("dark", "Dark", "The beginning is the end", [
+    series("tt5753856", "Dark"),
+  ]),
+  pack("squid-game", "Squid Game", "Red light, green light", [
+    series("tt10919420", "Squid Game"),
+  ]),
+  pack("money-heist", "Money Heist", "Bella ciao", [
+    series("tt6468322", "Money Heist"),
+  ]),
+  pack("the-bear", "The Bear", "Yes, chef", [
+    series("tt14452776", "The Bear"),
+  ]),
+  pack("shogun", "Shōgun", "Crimson sky", [
+    series("tt2788316", "Shōgun"),
+  ]),
+  pack("reacher", "Reacher", "Details matter", [
+    series("tt9288030", "Reacher"),
+  ]),
+  pack("slow-horses", "Slow Horses", "Slough House", [
+    series("tt5875444", "Slow Horses"),
+  ]),
+  pack("expanse", "The Expanse", "Remember the Cant", [
+    series("tt3230854", "The Expanse"),
+  ]),
+  pack("pokemon", "Pokémon", "Gotta catch 'em all", [
+    movie("tt0190641", "Pokémon: The First Movie"),
+    series("tt0168366", "Pokémon"),
+    movie("tt5609964", "Detective Pikachu"),
+  ]),
+  pack("sonic", "Sonic", "Gotta go fast", [
+    movie("tt3794354", "Sonic the Hedgehog"),
+    movie("tt12412888", "Sonic the Hedgehog 2"),
+    movie("tt18259086", "Sonic the Hedgehog 3"),
+  ]),
+  pack("mario", "The Super Mario Bros. Movie", "It's-a me", [
+    movie("tt6718170", "The Super Mario Bros. Movie"),
+  ]),
+  pack("venom", "Venom", "We are Venom", [
+    movie("tt1270797", "Venom"),
+    movie("tt7097896", "Let There Be Carnage"),
+  ]),
+  pack("ip-man", "Ip Man", "Wing Chun", [
+    movie("tt1220719", "Ip Man"),
+    movie("tt1641632", "Ip Man 2"),
+    movie("tt2888046", "Ip Man 3"),
+    movie("tt2010850", "Ip Man 4"),
+  ]),
+  pack("raid", "The Raid", "One building", [
+    movie("tt1899353", "The Raid"),
+    movie("tt2265171", "The Raid 2"),
+  ]),
+  pack("oldboy", "Park Chan-wook", "Vengeance", [
+    movie("tt0364569", "Oldboy"),
+    movie("tt0250258", "Sympathy for Mr. Vengeance"),
+    movie("tt0451094", "Lady Vengeance"),
+    movie("tt1723811", "The Handmaiden"),
+    movie("tt7131870", "Decision to Leave"),
+  ]),
+  pack("bong", "Bong Joon-ho", "Parasite", [
+    movie("tt0468492", "The Host"),
+    movie("tt1535492", "Snowpiercer"),
+    movie("tt6751668", "Parasite"),
+    movie("tt20215234", "Mickey 17"),
+  ]),
+  pack("kingsman", "Kingsman", "Manners maketh man", [
+    movie("tt2802144", "The Secret Service"),
+    movie("tt4622136", "The Golden Circle"),
+    movie("tt8851668", "The King's Man"),
+  ]),
+  pack("lethal-weapon", "Lethal Weapon", "I'm too old for this", [
+    movie("tt0093409", "Lethal Weapon"),
+    movie("tt0097733", "Lethal Weapon 2"),
+    movie("tt0104714", "Lethal Weapon 3"),
+    movie("tt0122151", "Lethal Weapon 4"),
+  ]),
+  pack("naked-gun", "The Naked Gun", "Drebin", [
+    movie("tt0095705", "The Naked Gun"),
+    movie("tt0102510", "The Naked Gun 2½"),
+    movie("tt0110622", "The Naked Gun 33⅓"),
+    movie("tt26584495", "The Naked Gun (2025)"),
+  ]),
+  pack("austin-powers", "Austin Powers", "Yeah baby", [
+    movie("tt0118655", "International Man of Mystery"),
+    movie("tt0145660", "The Spy Who Shagged Me"),
+    movie("tt0295178", "Goldmember"),
+  ]),
+  pack("scary-movie", "Scary Movie", "What's that smell?", [
+    movie("tt0175142", "Scary Movie"),
+    movie("tt0257106", "Scary Movie 2"),
+    movie("tt0306047", "Scary Movie 3"),
+    movie("tt0362120", "Scary Movie 4"),
+  ]),
+  pack("bttf", "Back to the Future", "Where we're going", [
+    movie("tt0088763", "Back to the Future"),
+    movie("tt0096874", "Back to the Future Part II"),
+    movie("tt0099088", "Back to the Future Part III"),
+  ]),
+  pack("ghostbusters", "Ghostbusters", "Who you gonna call?", [
+    movie("tt0087332", "Ghostbusters"),
+    movie("tt0097428", "Ghostbusters II"),
+    movie("tt1289401", "Ghostbusters (2016)"),
+    movie("tt4513678", "Afterlife"),
+    movie("tt21235248", "Frozen Empire"),
+  ]),
+  pack("jaws", "Jaws", "You're gonna need a bigger boat", [
+    movie("tt0073195", "Jaws"),
+    movie("tt0077766", "Jaws 2"),
+    movie("tt0085750", "Jaws 3-D"),
+  ]),
+  pack("predator", "Predator", "If it bleeds, we can kill it", [
+    movie("tt0093773", "Predator"),
+    movie("tt0105121", "Predator 2"),
+    movie("tt1440129", "Predators"),
+    movie("tt3829266", "The Predator"),
+    movie("tt11866324", "Prey"),
+  ]),
+  pack("rambo", "Rambo", "First Blood", [
+    movie("tt0083944", "First Blood"),
+    movie("tt0089880", "Rambo: First Blood Part II"),
+    movie("tt0112765", "Rambo III"),
+    movie("tt0462499", "Rambo"),
+    movie("tt1206885", "Last Blood"),
+  ]),
+  pack("hangover", "The Hangover", "What happens in Vegas", [
+    movie("tt1119646", "The Hangover"),
+    movie("tt1411697", "The Hangover Part II"),
+    movie("tt1951261", "The Hangover Part III"),
+  ]),
+  pack("deadpool", "Deadpool", "Maximum effort", [
+    movie("tt1431045", "Deadpool"),
+    movie("tt5463162", "Deadpool 2"),
+    movie("tt6263850", "Deadpool & Wolverine"),
+  ]),
+  pack("blade", "Blade", "The daywalker", [
+    movie("tt0120611", "Blade"),
+    movie("tt0187738", "Blade II"),
+    movie("tt0307211", "Blade: Trinity"),
+  ]),
+  pack("mummy", "The Mummy", "Imhotep", [
+    movie("tt0120616", "The Mummy"),
+    movie("tt0120755", "The Mummy Returns"),
+    movie("tt0859163", "Tomb of the Dragon Emperor"),
+  ]),
+  pack("national-treasure", "National Treasure", "Charlotte", [
+    movie("tt0368891", "National Treasure"),
+    movie("tt0465234", "Book of Secrets"),
+  ]),
+  pack("maze-runner", "Maze Runner", "WCKD is good", [
+    movie("tt1790864", "The Maze Runner"),
+    movie("tt4046784", "Scorch Trials"),
+    movie("tt4500922", "The Death Cure"),
+  ]),
+  pack("cars", "Cars", "Ka-chow", [
+    movie("tt0317219", "Cars"),
+    movie("tt1216475", "Cars 2"),
+    movie("tt3606752", "Cars 3"),
+  ]),
+  pack("ice-age", "Ice Age", "Scrat", [
+    movie("tt0268380", "Ice Age"),
+    movie("tt0438097", "The Meltdown"),
+    movie("tt1080016", "Dawn of the Dinosaurs"),
+    movie("tt1667889", "Continental Drift"),
+    movie("tt3416828", "Collision Course"),
+  ]),
+  pack("madagascar", "Madagascar", "Move it, move it", [
+    movie("tt0351283", "Madagascar"),
+    movie("tt0479952", "Escape 2 Africa"),
+    movie("tt1277953", "Europe's Most Wanted"),
+  ]),
+  pack("nemo", "Finding Nemo", "Just keep swimming", [
+    movie("tt0266543", "Finding Nemo"),
+    movie("tt2277860", "Finding Dory"),
+  ]),
+  pack("incredibles", "The Incredibles", "No capes", [
+    movie("tt0317705", "The Incredibles"),
+    movie("tt3606756", "Incredibles 2"),
+  ]),
+  pack("blade-runner", "Blade Runner", "Tears in rain", [
+    movie("tt0083658", "Blade Runner"),
+    movie("tt1856101", "Blade Runner 2049"),
+  ]),
+  pack("robocop", "RoboCop", "I'd buy that for a dollar", [
+    movie("tt0093870", "RoboCop"),
+    movie("tt0100502", "RoboCop 2"),
+    movie("tt0105685", "RoboCop 3"),
+  ]),
+  pack("evil-dead", "Evil Dead", "Groovy", [
+    movie("tt0083907", "The Evil Dead"),
+    movie("tt0092991", "Evil Dead II"),
+    movie("tt0106308", "Army of Darkness"),
+    movie("tt1288558", "Evil Dead (2013)"),
+    movie("tt13375076", "Evil Dead Rise"),
+  ]),
+  pack("hannibal", "Hannibal", "Hello, Clarice", [
+    movie("tt0102926", "The Silence of the Lambs"),
+    movie("tt0289765", "Red Dragon"),
+    movie("tt0212985", "Hannibal"),
+    series("tt2243973", "Hannibal"),
+  ]),
+  pack("the-wire", "The Wire", "All the pieces matter", [
+    series("tt0306414", "The Wire"),
+  ]),
+  pack("sopranos", "The Sopranos", "Gabagool", [
+    series("tt0141842", "The Sopranos"),
+  ]),
+  pack("succession", "Succession", "You are not serious people", [
+    series("tt7660850", "Succession"),
+  ]),
+  pack("ted-lasso", "Ted Lasso", "Believe", [
+    series("tt10986410", "Ted Lasso"),
+  ]),
+  pack("severance", "Severance", "Refiner of the quarter", [
+    series("tt11280740", "Severance"),
+  ]),
+  pack("white-lotus", "The White Lotus", "Please enjoy your stay", [
+    series("tt13406094", "The White Lotus"),
+  ]),
+  pack("crown", "The Crown", "Uneasy lies the head", [
+    series("tt4786824", "The Crown"),
+  ]),
+  pack("bridgerton", "Bridgerton", "Dearest gentle reader", [
+    series("tt8740790", "Bridgerton"),
+  ]),
+  pack("peaky", "Peaky Blinders", "By order of the Peaky Blinders", [
+    series("tt2442560", "Peaky Blinders"),
+  ]),
+  pack("sherlock", "Sherlock", "The game is on", [
+    series("tt1475582", "Sherlock"),
+  ]),
+  pack("house", "House", "Everybody lies", [
+    series("tt0412142", "House"),
+  ]),
+  pack("sunny", "It's Always Sunny", "The Gang", [
+    series("tt0472954", "It's Always Sunny in Philadelphia"),
+  ]),
+  pack("community", "Community", "Six seasons and a movie", [
+    series("tt1439629", "Community"),
+  ]),
+  pack("b99", "Brooklyn Nine-Nine", "Cool cool cool", [
+    series("tt2467372", "Brooklyn Nine-Nine"),
+  ]),
+  pack("schitts", "Schitt's Creek", "A little bit Alexis", [
+    series("tt3526078", "Schitt's Creek"),
+  ]),
+  pack("good-place", "The Good Place", "Forking shirtballs", [
+    series("tt4955642", "The Good Place"),
+  ]),
+  pack("rick-morty", "Rick and Morty", "Wubba lubba dub dub", [
+    series("tt2861424", "Rick and Morty"),
+  ]),
+  pack("arcane", "Arcane", "The city of progress", [
+    series("tt11126994", "Arcane"),
+  ]),
+  pack("invincible", "Invincible", "Think, Mark", [
+    series("tt6741278", "Invincible"),
+  ]),
+  pack("witcher", "The Witcher", "Toss a coin", [
+    series("tt5180504", "The Witcher"),
+  ]),
+  pack("wednesday", "Wednesday", "Nevermore", [
+    series("tt13443470", "Wednesday"),
+  ]),
+  pack("euphoria", "Euphoria", "Special episode", [
+    series("tt8772296", "Euphoria"),
+  ]),
+  pack("band-of-brothers", "Band of Brothers", "Currahee", [
+    series("tt0185906", "Band of Brothers"),
+    series("tt0374463", "The Pacific"),
+  ]),
+  pack("chernobyl", "Chernobyl", "Not great, not terrible", [
+    series("tt7366338", "Chernobyl"),
+  ]),
+  pack("narcos", "Narcos", "Plata o plomo", [
+    series("tt2707408", "Narcos"),
+    series("tt8714904", "Narcos: Mexico"),
+  ]),
+  pack("ozark", "Ozark", "In the dark", [
+    series("tt5071412", "Ozark"),
+  ]),
+  pack("dexter", "Dexter", "Tonight's the night", [
+    series("tt0773262", "Dexter"),
+    series("tt14164730", "New Blood"),
+  ]),
+  pack("lost", "Lost", "Not Pennys boat", [
+    series("tt0411008", "Lost"),
+  ]),
+  pack("westworld", "Westworld", "These violent delights", [
+    series("tt0475784", "Westworld"),
+  ]),
+  pack("mad-men", "Mad Men", "It's toasted", [
+    series("tt0804503", "Mad Men"),
+  ]),
+  pack("curb", "Curb Your Enthusiasm", "Pretty, pretty, pretty good", [
+    series("tt0264235", "Curb Your Enthusiasm"),
+  ]),
 ];
 
 export function getCollection(id: string) {

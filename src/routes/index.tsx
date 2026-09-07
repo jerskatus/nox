@@ -5,7 +5,6 @@ import { Hero } from "@/components/catalog/hero";
 import { ContinueRow } from "@/components/catalog/continue-row";
 import { ProviderRow } from "@/components/catalog/provider-row";
 import { CatalogRow } from "@/components/catalog/row";
-import { YoutubeRow } from "@/components/catalog/youtube-row";
 import { CollectionsRow } from "@/components/catalog/collections-row";
 import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,10 +12,7 @@ import { fetchCatalog, fetchMeta, loadJsonMany } from "@/lib/stremio/client";
 import { HOME_ROWS } from "@/lib/stremio/defaults";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { CINEMETA_URL, resourceUrl } from "@/lib/stremio/urls";
-import { fetchRecommended } from "@/lib/google-youtube";
-import { fetchYoutube } from "@/lib/youtube";
 import { useEnabledAddons } from "@/stores/addons";
-import { googleLive, useGoogleStore } from "@/stores/google";
 import { continueWatching, useLibraryStore } from "@/stores/library";
 
 type HomeRow = {
@@ -47,7 +43,6 @@ function Home() {
   const list = useLibraryStore((s) => s.list);
   const progress = useLibraryStore((s) => s.progress);
   const toggleList = useLibraryStore((s) => s.toggleList);
-  const google = useGoogleStore();
   const resume = continueWatching(progress);
   const [trailerOpen, setTrailerOpen] = useState(false);
 
@@ -79,18 +74,6 @@ function Home() {
       };
     },
     staleTime: 300_000,
-  });
-
-  const extraYoutube = useQuery({
-    queryKey: ["home-youtube", googleLive(google) ? "rec" : "v2", google.accessToken],
-    queryFn: async () => {
-      if (googleLive(google) && google.accessToken) {
-        const videos = await fetchRecommended(google.accessToken);
-        return { videos, query: "recommended" as const };
-      }
-      return fetchYoutube({ data: { tab: "trending" } });
-    },
-    staleTime: 180_000,
   });
 
   const trailerId = heroMeta.data ? trailerYoutubeId(heroMeta.data) : null;
@@ -139,12 +122,6 @@ function Home() {
             />
           ) : null,
         )}
-
-        {extraYoutube.data && extraYoutube.data.videos.length > 0 ? (
-          <YoutubeRow items={extraYoutube.data.videos.slice(0, 16)} tab={googleLive(google) ? "recommended" : "trending"} />
-        ) : extraYoutube.isLoading ? (
-          <YoutubeRow items={[]} loading />
-        ) : null}
       </div>
 
       {trailerOpen && trailerId && heroItem ? (

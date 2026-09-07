@@ -11,7 +11,7 @@ export function CollectionsRow() {
         </Link>
       </div>
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 sm:gap-3 sm:px-8 lg:px-12">
-        {COLLECTIONS.map((item) => (
+        {COLLECTIONS.slice(0, 28).map((item) => (
           <Link
             key={item.id}
             to="/collections/$id"
