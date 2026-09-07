@@ -239,6 +239,81 @@ export function parseIntent(raw: string): SearchIntent {
   };
 }
 
+export async function nameSearch(query: string, addons: InstalledAddon[]): Promise<{
+  intent: SearchIntent;
+  items: RankedTitle[];
+}> {
+  const q = query.trim();
+  const intent: SearchIntent = {
+    raw: q,
+    ask: false,
+    genres: [],
+    moods: [],
+    terms: [q],
+    chips: [],
+  };
+  const catalogs = catalogsWithSearch(addons)
+    .sort((a, b) => Number(b.addonName === "Cinemeta") - Number(a.addonName === "Cinemeta"))
+    .slice(0, 8);
+  const urls = catalogs.map((catalog) =>
+    resourceUrl(catalog.transportUrl, "catalog", catalog.type, catalog.id, { search: q }),
+  );
+  const results = urls.length ? await loadJsonMany(urls) : [];
+  const seen = new Set<string>();
+  const pool: MetaPreview[] = [];
+  for (const result of results) {
+    if (!result.ok) continue;
+    const metas = ((result.data as { metas?: MetaPreview[] }).metas ?? []) as MetaPreview[];
+    for (const item of metas) {
+      if (!item?.id || !item.name) continue;
+      const key = `${item.type}:${item.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pool.push(item);
+    }
+  }
+
+  const needle = q.toLowerCase();
+  const items = pool
+    .map((item) => {
+      const name = item.name.toLowerCase();
+      let score = 0;
+      const why: string[] = [];
+      if (name === needle) {
+        score += 140;
+        why.push("Exact title");
+      } else if (name.startsWith(needle)) {
+        score += 90;
+        why.push("Title starts with");
+      } else if (name.includes(needle)) {
+        score += 55;
+        why.push("Title match");
+      } else {
+        const words = needle.split(/\s+/).filter((w) => w.length > 1);
+        const hits = words.filter((w) => name.includes(w)).length;
+        if (hits === 0) return { ...item, score: 0, why };
+        score += hits === words.length ? 32 : hits * 8;
+      }
+      const rating = Number(item.imdbRating);
+      if (!Number.isNaN(rating) && rating > 0) score += rating;
+      return { ...item, score, why };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 48);
+
+  return { intent, items };
+}
+
+export async function runSearch(
+  query: string,
+  addons: InstalledAddon[],
+  mode: "smart" | "title",
+) {
+  if (mode === "title") return nameSearch(query, addons);
+  return smartSearch(query, addons);
+}
+
 export async function smartSearch(query: string, addons: InstalledAddon[]): Promise<{
   intent: SearchIntent;
   items: RankedTitle[];
