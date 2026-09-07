@@ -24,6 +24,7 @@ import { streamQuality } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
 import { useLibraryStore } from "@/stores/library";
+import { useSettingsStore } from "@/stores/settings";
 import { decodeId } from "@/lib/utils";
 
 type Search = { video?: string; auto?: string };
@@ -47,7 +48,11 @@ function WatchPage() {
   const progressList = useLibraryStore((s) => s.progress);
   const prefs = useLibraryStore((s) => s.prefs);
   const savePref = useLibraryStore((s) => s.savePref);
-  const autoplayNext = useLibraryStore((s) => s.autoplayNext);
+  const autoplayNext = useSettingsStore((s) => s.autoplayNext);
+  const skipIntros = useSettingsStore((s) => s.skipIntros);
+  const rememberStream = useSettingsStore((s) => s.rememberStream);
+  const playbackRate = useSettingsStore((s) => s.playbackRate);
+  const subtitleMode = useSettingsStore((s) => s.subtitles);
   const pref = prefs[id];
 
   const metaQuery = useQuery({
@@ -82,11 +87,11 @@ function WatchPage() {
 
   useEffect(() => {
     if (auto !== "1" || streamQuery.isLoading || picked) return;
-    const match = pickRememberedStream(ranked, pref) ?? firstPlayableStream(ranked);
+    const match = (rememberStream ? pickRememberedStream(ranked, pref) : null) ?? firstPlayableStream(ranked);
     if (!match) return;
     setPicked(streamKey(match));
     setShowList(false);
-  }, [auto, ranked, streamQuery.isLoading, picked, pref]);
+  }, [auto, ranked, streamQuery.isLoading, picked, pref, rememberStream]);
 
   const selected = ranked.find((s) => streamKey(s) === picked) ?? null;
   const tracks = mergeSubtitles(subtitleQuery.data ?? [], selected?.subtitles);
@@ -189,7 +194,7 @@ function WatchPage() {
         streams={ranked}
         loading={streamQuery.isLoading}
         selectedKey={picked}
-        preferredKey={preferred ? streamKey(preferred) : null}
+        preferredKey={rememberStream && preferred ? streamKey(preferred) : null}
         addonCount={addons.filter((a) => a.enabled).length}
         onBack={goBack}
         onPick={onPick}
@@ -227,10 +232,13 @@ function WatchPage() {
         poster={meta?.background || meta?.poster}
         startAt={stored && stored.position > 8 ? stored.position : 0}
         subtitles={tracks}
-        preferredLang={pref?.subtitleLang}
+        preferredLang={subtitleMode === "en" ? "eng" : subtitleMode === "last" ? pref?.subtitleLang : undefined}
         isEpisode={type === "series" || Boolean(episode)}
         introSkipTo={pref?.introSkipTo}
         autoplayNext={autoplayNext && Boolean(nextId)}
+        skipIntros={skipIntros}
+        defaultRate={playbackRate}
+        captionsDefault={subtitleMode !== "off"}
         onBack={goBack}
         onProgress={onProgress}
         onEnded={() => markWatched(videoId)}

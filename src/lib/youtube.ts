@@ -12,6 +12,7 @@ export type YtVideo = {
 };
 
 export const YT_TABS = [
+  { id: "recommended", label: "Recommended", query: "" },
   { id: "trending", label: "Trending", query: "official trailer" },
   { id: "music", label: "Music", query: "official music video" },
   { id: "gaming", label: "Gaming", query: "gaming highlights" },
@@ -160,6 +161,7 @@ function interleave(groups: YtVideo[][]) {
 export const fetchYoutube = createServerFn({ method: "POST" })
   .validator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<{ videos: YtVideo[]; query: string }> => {
+    if (data.tab === "recommended") return { videos: [], query: "recommended" };
     const tab = YT_TABS.find((item) => item.id === data.tab);
     const query = (data.q?.trim() || tab?.query || "official trailer").slice(0, 180);
     const key = `${data.q?.trim() ? "q" : data.tab ?? "trending"}:${query.toLowerCase()}`;

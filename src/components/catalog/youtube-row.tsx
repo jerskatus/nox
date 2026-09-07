@@ -1,9 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { Play, Youtube } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ytThumb, type YtVideo } from "@/lib/youtube";
+import { ytThumb, type YtTabId, type YtVideo } from "@/lib/youtube";
 
-export function YoutubeRow({ items, loading }: { items: YtVideo[]; loading?: boolean }) {
+export function YoutubeRow({
+  items,
+  loading,
+  tab = "trending",
+}: {
+  items: YtVideo[];
+  loading?: boolean;
+  tab?: YtTabId;
+}) {
   if (!loading && items.length === 0) return null;
 
   return (
@@ -13,7 +21,7 @@ export function YoutubeRow({ items, loading }: { items: YtVideo[]; loading?: boo
           <Youtube className="size-5 text-accent" />
           YouTube
         </h2>
-        <Link to="/youtube" className="shrink-0 text-sm text-muted touch-manipulation">
+        <Link to="/youtube" search={{ tab }} className="shrink-0 text-sm text-muted touch-manipulation">
           Watch more →
         </Link>
       </div>
@@ -22,17 +30,17 @@ export function YoutubeRow({ items, loading }: { items: YtVideo[]; loading?: boo
           ? Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="aspect-wide w-64 shrink-0 rounded-md sm:w-72" />
             ))
-          : items.map((video) => <HomeVideoCard key={video.id} video={video} />)}
+          : items.map((video) => <HomeVideoCard key={video.id} video={video} tab={tab} />)}
       </div>
     </section>
   );
 }
 
-function HomeVideoCard({ video }: { video: YtVideo }) {
+function HomeVideoCard({ video, tab }: { video: YtVideo; tab: YtTabId }) {
   return (
     <Link
       to="/youtube"
-      search={{ v: video.id, tab: "trending" }}
+      search={{ v: video.id, tab }}
       className="group w-64 shrink-0 text-left touch-manipulation sm:w-72"
     >
       <div className="relative overflow-hidden rounded-md bg-elevated outline outline-1 -outline-offset-1 outline-fg/10 aspect-wide">

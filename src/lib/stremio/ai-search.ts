@@ -1,7 +1,7 @@
 import type { InstalledAddon, MetaPreview } from "./types";
-import { interpretAsk, type AskTitle } from "./ask";
+import { interpretAsk, type AskResult, type AskTitle } from "./ask";
 import { fetchCatalog, loadJsonMany } from "./client";
-import { MOODS, TROPES, anyKeyMatches } from "./search-packs";
+import { MOODS, TROPES, anyKeyMatches, expandTropeTitles } from "./search-packs";
 import { catalogsWithSearch, CINEMETA_URL, resourceUrl } from "./urls";
 
 export type SearchIntent = {
@@ -406,19 +406,33 @@ export async function smartSearch(query: string, addons: InstalledAddon[]): Prom
   const tropes = tropeTitles(intent);
 
   if (intent.ask || tropes.length) {
-    const grok = await interpretAsk({ data: { query } });
-    const wanted: AskTitle[] = uniqueWanted([
-      ...tropes.slice(0, 12),
-      ...(grok.ok ? grok.titles : []),
+    const tropesWanted = uniqueWanted(tropes);
+    const grokPromise = Promise.race([
+      interpretAsk({ data: { query } }).catch((): AskResult => ({ ok: false, chips: [], titles: [] })),
+      new Promise<AskResult>((resolve) =>
+        setTimeout(() => resolve({ ok: false, chips: [], titles: [] }), 4500),
+      ),
     ]);
+    const resolvedPromise = tropesWanted.length ? resolveNamedTitles(tropesWanted, intent) : Promise.resolve([]);
+    const [grok, resolved] = await Promise.all([grokPromise, resolvedPromise]);
     if (grok.ok) {
       if (grok.type) intent.type = grok.type;
       intent.chips = unique([...grok.chips, ...intent.chips]).slice(0, 8);
+      const extra = grok.titles.filter(
+        (title) => !tropesWanted.some((row) => row.name.toLowerCase() === title.name.toLowerCase()),
+      );
+      if (extra.length) {
+        const more = await resolveNamedTitles(extra.slice(0, 8), intent);
+        const seen = new Set(resolved.map((item) => `${item.type}:${item.id}`));
+        for (const item of more) {
+          const key = `${item.type}:${item.id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          resolved.push(item);
+        }
+      }
     }
-    if (wanted.length) {
-      const resolved = await resolveNamedTitles(wanted, intent);
-      if (resolved.length > 0) return { intent, items: resolved };
-    }
+    if (resolved.length > 0) return { intent, items: resolved };
     // Plot queries must not fall through to raw keyword search (that is how
     // "best friends / road trip" became Friends + Going in Style).
     if (intent.ask && !intent.like) return { intent, items: [] };
@@ -662,7 +676,7 @@ function uniqueWanted(rows: AskTitle[]): AskTitle[] {
     seen.add(key);
     out.push(row);
   }
-  return out.slice(0, 16);
+  return out.slice(0, 24);
 }
 
 function tropeTitles(intent: SearchIntent): AskTitle[] {
@@ -672,7 +686,7 @@ function tropeTitles(intent: SearchIntent): AskTitle[] {
     intent.chips = unique([...trope.chips, ...intent.chips]);
     if (trope.kind) intent.type = intent.type ?? trope.kind;
     groups.push(
-      trope.titles.map((name) => ({
+      expandTropeTitles(trope).map((name) => ({
         name,
         type: trope.kind ?? intent.type ?? "movie",
         why: trope.chips[0] ?? "match",

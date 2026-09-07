@@ -1,3 +1,5 @@
+import { TROPE_EXTRAS } from "./trope-extras";
+
 export type MoodPack = { keys: string[]; genres: string[]; label: string };
 export type TropePack = { keys: string[]; titles: string[]; chips: string[]; kind?: "movie" | "series" };
 
@@ -313,8 +315,8 @@ export const TROPES: TropePack[] = [
   { keys: ["heist", "caper", "bank job", "one last job"], titles: ["Ocean's Eleven", "The Italian Job", "Heat", "Inside Man", "Logan Lucky", "Now You See Me", "The Town", "Baby Driver", "Widows", "The Asphalt Jungle"], chips: ["heist"] },
   { keys: ["assemble the team", "assembling the team", "ragtag team", "caper crew"], titles: ["The Magnificent Seven", "Ocean's Eleven", "The Avengers", "Guardians of the Galaxy", "The Dirty Dozen", "Inglourious Basterds", "Suicide Squad", "The Italian Job"], chips: ["assemble the team"] },
   { keys: ["ragtag", "bunch of misfits", "misfit team", "motley crew"], titles: ["Guardians of the Galaxy", "The Goonies", "The Avengers", "The Dirty Dozen", "Mystery Men", "The Sandlot", "Dodgeball", "The Mighty Ducks"], chips: ["misfits"] },
-  { keys: ["time loop", "same day over", "repeating day"], titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Russian Doll", "The Map of Tiny Perfect Things"], chips: ["time loop"] },
-  { keys: ["time travel"], titles: ["Back to the Future", "Looper", "12 Monkeys", "Primer", "About Time", "The Time Traveler's Wife", "Arrival", "Interstellar"], chips: ["time travel"] },
+  { keys: ["time loop", "same day over", "repeating day"], titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Happy Death Day 2U", "Russian Doll", "The Map of Tiny Perfect Things", "Boss Level", "ARQ", "12:01", "Naked", "Triangle", "The Endless", "Run Lola Run", "Before I Fall"], chips: ["time loop"] },
+  { keys: ["time travel"], titles: ["Back to the Future", "Back to the Future Part II", "Back to the Future Part III", "The Terminator", "Terminator 2: Judgment Day", "12 Monkeys", "Looper", "Primer", "Predestination", "Timecrimes", "Tenet", "About Time", "The Time Traveler's Wife", "The Time Machine", "Time After Time", "Time Bandits", "Bill & Ted's Excellent Adventure", "Hot Tub Time Machine", "Frequency", "Déjà Vu", "Safety Not Guaranteed", "Midnight in Paris", "The Butterfly Effect", "Donnie Darko", "X-Men: Days of Future Past", "Avengers: Endgame", "The Adam Project", "Project Almanac", "Star Trek IV: The Voyage Home", "Your Name", "The Girl Who Leapt Through Time", "Dark", "Doctor Who", "Outlander", "11.22.63", "Loki", "Arrival", "Interstellar"], chips: ["time travel"] },
   { keys: ["buddy cop", "buddy cops"], titles: ["Lethal Weapon", "Bad Boys", "Rush Hour", "21 Jump Street", "The Nice Guys", "Hot Fuzz", "The Other Guys", "Kiss Kiss Bang Bang"], chips: ["buddy cop"] },
   { keys: ["die hard", "one man against", "trapped in a"], titles: ["Die Hard", "Speed", "The Raid", "Dredd", "Olympus Has Fallen", "Under Siege", "Air Force One"], chips: ["die hard"] },
   { keys: ["underdog"], titles: ["Rocky", "Rudy", "The Karate Kid", "Million Dollar Baby", "Remember the Titans", "Moneyball", "Cinderella Man", "Dodgeball"], chips: ["underdog"] },
@@ -678,6 +680,38 @@ export const TROPES: TropePack[] = [
   { keys: ["quarantine", "lockdown movie"], titles: ["Host", "The Platform", "Alive", "Songbird", "Locked Down", "The Nest"], chips: ["lockdown"] },
   { keys: ["climate", "climate change"], titles: ["Don't Look Up", "The Day After Tomorrow", "First Reformed", "Snowpiercer", "Interstellar", "Annihilation"], chips: ["climate"] },
   { keys: ["ai takeover", "robot uprising"], titles: ["The Terminator", "The Matrix", "Ex Machina", "I, Robot", "9", "The Creator", "M3GAN"], chips: ["robot uprising"] },
-  { keys: ["time loop movies"], titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Russian Doll"], chips: ["time loop"] },
+  { keys: ["time loop movies"], titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Happy Death Day 2U", "Russian Doll", "Boss Level", "ARQ", "12:01", "Triangle", "The Endless"], chips: ["time loop"] },
   { keys: ["heist movies from the 2000s", "2000s heist"], titles: ["Ocean's Eleven", "The Italian Job", "Inside Man", "The Town", "Ocean's Twelve", "The Bank Job"], chips: ["2000s heist"] },
 ];
+
+export function expandTropeTitles(trope: TropePack): string[] {
+  const extra = [
+    ...trope.keys.flatMap((key) => TROPE_EXTRAS[key] ?? []),
+    ...trope.chips.flatMap((chip) => TROPE_EXTRAS[chip] ?? []),
+  ];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (name: string) => {
+    const key = name.toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(name);
+  };
+  for (const name of trope.titles) push(name);
+  for (const name of extra) push(name);
+  if (out.length < 14) {
+    for (const other of TROPES) {
+      if (other === trope) continue;
+      const related =
+        other.chips.some((chip) => trope.chips.includes(chip)) ||
+        other.keys.some((key) => trope.keys.includes(key));
+      if (!related) continue;
+      for (const name of other.titles) {
+        push(name);
+        if (out.length >= 24) break;
+      }
+      if (out.length >= 24) break;
+    }
+  }
+  return out;
+}

@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Play, Search as SearchIcon, Youtube } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { GoogleAccountCard } from "@/components/google-connect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardToggle, OnscreenKeyboard } from "@/components/ui/onscreen-keyboard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { fetchRecommended } from "@/lib/google-youtube";
 import {
   fetchYoutube,
   isYtTab,
@@ -15,6 +17,7 @@ import {
   type YtTabId,
   type YtVideo,
 } from "@/lib/youtube";
+import { googleLive, useGoogleStore } from "@/stores/google";
 import { cn } from "@/lib/utils";
 
 type Search = { q?: string; v?: string; tab?: YtTabId };
@@ -34,7 +37,10 @@ function YoutubePage() {
   const [draft, setDraft] = useState(q);
   const [keysOpen, setKeysOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeTab: YtTabId = tab ?? "trending";
+  const google = useGoogleStore();
+  const connected = googleLive(google);
+  const activeTab: YtTabId = tab ?? (connected ? "recommended" : "trending");
+  const wantsRec = !q.trim() && activeTab === "recommended";
 
   useEffect(() => {
     setDraft(q);
@@ -42,11 +48,21 @@ function YoutubePage() {
 
   const query = useQuery({
     queryKey: ["youtube", "v2", q, activeTab],
+    enabled: !wantsRec,
     queryFn: () => fetchYoutube({ data: { q: q.trim() || undefined, tab: q.trim() ? undefined : activeTab } }),
     staleTime: 120_000,
   });
 
-  const videos = query.data?.videos ?? [];
+  const recQuery = useQuery({
+    queryKey: ["youtube", "recommended", google.accessToken],
+    enabled: wantsRec && connected && Boolean(google.accessToken),
+    queryFn: () => fetchRecommended(google.accessToken!),
+    staleTime: 120_000,
+  });
+
+  const videos = wantsRec ? (recQuery.data ?? []) : (query.data?.videos ?? []);
+  const loading = wantsRec ? recQuery.isLoading : query.isLoading;
+  const recError = recQuery.error instanceof Error ? recQuery.error.message : null;
   const playing = videos.find((item) => item.id === v);
   const related = useMemo(() => {
     if (!v) return videos;
@@ -154,7 +170,7 @@ function YoutubePage() {
           </div>
           <div className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold tracking-wide text-subtle uppercase">Up next</h2>
-            {query.isLoading
+            {loading
               ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
               : related.slice(0, 12).map((item) => (
                   <VideoRow key={item.id} video={item} active={item.id === v} onPlay={() => go({ v: item.id })} />
@@ -166,14 +182,24 @@ function YoutubePage() {
       <h2 className="mb-3 text-lg font-semibold">
         {q.trim() ? `Results for “${q.trim()}”` : YT_TABS.find((item) => item.id === activeTab)?.label}
       </h2>
-      {query.isLoading ? (
+      {wantsRec && !connected ? (
+        <div className="mx-auto max-w-md">
+          <GoogleAccountCard compact />
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="aspect-wide w-full rounded-md" />
           ))}
         </div>
+      ) : recError && wantsRec ? (
+        <p className="py-16 text-center text-muted">{recError}</p>
       ) : videos.length === 0 ? (
-        <p className="py-16 text-center text-muted">YouTube didn’t return videos for that search. Try another query.</p>
+        <p className="py-16 text-center text-muted">
+          {wantsRec
+            ? "No videos from your subscriptions yet. Subscribe on YouTube, then refresh."
+            : "YouTube didn’t return videos for that search. Try another query."}
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-x-3 gap-y-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {videos.map((item) => (

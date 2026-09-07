@@ -38,6 +38,9 @@ type Props = {
   isEpisode?: boolean;
   introSkipTo?: number;
   autoplayNext?: boolean;
+  skipIntros?: boolean;
+  defaultRate?: number;
+  captionsDefault?: boolean;
   onBack: () => void;
   onProgress: (position: number, duration: number) => void;
   onEnded?: () => void;
@@ -63,6 +66,9 @@ export function VideoPlayer({
   isEpisode,
   introSkipTo,
   autoplayNext = true,
+  skipIntros = false,
+  defaultRate = 1,
+  captionsDefault = true,
   onBack,
   onProgress,
   onEnded,
@@ -87,9 +93,11 @@ export function VideoPlayer({
   const [controls, setControls] = useState(true);
   const [waiting, setWaiting] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(defaultRate);
   const [captionsOpen, setCaptionsOpen] = useState(false);
-  const [selectedSub, setSelectedSub] = useState<Subtitle | null>(() => preferSubtitle(subtitles, preferredLang));
+  const [selectedSub, setSelectedSub] = useState<Subtitle | null>(() =>
+    captionsDefault ? preferSubtitle(subtitles, preferredLang) : null,
+  );
   const [cues, setCues] = useState<Cue[]>([]);
   const [offset, setOffset] = useState(0);
   const [syncState, setSyncState] = useState<SyncState>("idle");
@@ -121,10 +129,28 @@ export function VideoPlayer({
   }, [startAt]);
 
   useEffect(() => {
-    setSelectedSub(preferSubtitle(subtitles, preferredLang));
+    setRate(defaultRate);
+  }, [defaultRate]);
+
+  useEffect(() => {
+    if (!skipIntros || skippedIntro) return;
+    if (time < 4) return;
+    const end = introSkipTo && introSkipTo > 20 ? introSkipTo : 90;
+    if (time > Math.min(end, 100)) return;
+    if (duration > 0 && duration <= 240) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const to = introSkipTo && introSkipTo > 20 ? introSkipTo : 85;
+    video.currentTime = Math.min(to, Math.max(0, (video.duration || to) - 1));
+    setSkippedIntro(true);
+    onIntroSkip?.(to);
+  }, [skipIntros, skippedIntro, time, duration, introSkipTo, onIntroSkip]);
+
+  useEffect(() => {
+    setSelectedSub(captionsDefault ? preferSubtitle(subtitles, preferredLang) : null);
     setOffset(0);
     setSyncState("idle");
-  }, [subKey, subtitles, preferredLang]);
+  }, [subKey, subtitles, preferredLang, captionsDefault]);
 
   useEffect(() => {
     if (!selectedSub?.url) {

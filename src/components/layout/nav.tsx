@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, Search, Settings, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -67,7 +67,7 @@ export function Nav() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300",
-          solid || open || pathname === "/search" || pathname === "/youtube"
+          solid || open || pathname === "/search" || pathname === "/youtube" || pathname === "/options"
             ? "bg-bg"
             : "bg-linear-to-b from-bg/80 to-transparent",
         )}
@@ -92,6 +92,18 @@ export function Nav() {
               onClick={goSearch}
             >
               <Search className="size-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="bg-transparent hover:bg-fg/10"
+              aria-label="Options"
+              onClick={() => {
+                setOpen(false);
+                void navigate({ to: "/options" });
+              }}
+            >
+              <Settings className="size-5" />
             </Button>
             <Button
               variant="ghost"
@@ -127,6 +139,17 @@ export function Nav() {
               <Search className="size-5" />
               Search
             </button>
+            <Link
+              to="/options"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "mt-1 flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-base touch-manipulation",
+                pathname === "/options" ? "bg-elevated text-fg" : "text-muted",
+              )}
+            >
+              <Settings className="size-5" />
+              Options
+            </Link>
           </nav>
         </div>
       ) : null}

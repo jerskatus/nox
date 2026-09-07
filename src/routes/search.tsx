@@ -10,6 +10,7 @@ import { ASK_PROMPTS, runSearch } from "@/lib/stremio/ai-search";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
 import { useEnabledAddons } from "@/stores/addons";
+import { useSettingsStore } from "@/stores/settings";
 
 type SearchMode = "smart" | "title";
 type Search = { q?: string; mode?: SearchMode };
@@ -28,22 +29,25 @@ function SearchPage() {
   const { q = "", mode: urlMode } = Route.useSearch();
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
-  const [storedMode, setStoredMode] = useState<SearchMode>("smart");
+  const [storedMode, setStoredMode] = useState<SearchMode>(() => useSettingsStore.getState().searchMode);
   const [keysOpen, setKeysOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const typed = useRef(false);
   const addons = useEnabledAddons();
   const mode: SearchMode = urlMode ?? storedMode;
 
   useEffect(() => {
     const stored = window.localStorage.getItem(MODE_KEY);
     if (stored === "title" || stored === "smart") setStoredMode(stored);
+    else setStoredMode(useSettingsStore.getState().searchMode);
   }, []);
 
   useEffect(() => {
-    setDraft(q);
+    if (!typed.current) setDraft(q);
   }, [q]);
 
   useEffect(() => {
+    if (!typed.current) return;
     const handle = window.setTimeout(() => {
       const next = draft.trim();
       if (next === q.trim()) return;
@@ -53,15 +57,18 @@ function SearchPage() {
   }, [draft, q, mode, navigate]);
 
   function go(next: string, nextMode: SearchMode = mode) {
+    typed.current = true;
     setDraft(next);
     window.localStorage.setItem(MODE_KEY, nextMode);
     setStoredMode(nextMode);
+    useSettingsStore.getState().setSearchMode(nextMode);
     void navigate({ to: "/search", search: { q: next, mode: nextMode } });
   }
 
   function setMode(next: SearchMode) {
     window.localStorage.setItem(MODE_KEY, next);
     setStoredMode(next);
+    useSettingsStore.getState().setSearchMode(next);
     void navigate({ to: "/search", search: { q, mode: next }, replace: true });
   }
 
@@ -99,7 +106,10 @@ function SearchPage() {
             type="search"
             enterKeyHint="search"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              typed.current = true;
+              setDraft(e.target.value);
+            }}
             placeholder={
               mode === "smart"
                 ? "Ask anything — ‘shows like The Bear’, ‘90s romcoms’"
@@ -203,7 +213,10 @@ function SearchPage() {
       {keysOpen ? (
         <OnscreenKeyboard
           value={draft}
-          onChange={setDraft}
+          onChange={(next) => {
+            typed.current = true;
+            setDraft(next);
+          }}
           onSubmit={() => go(draft.trim())}
           onClose={() => setKeysOpen(false)}
           inputRef={inputRef}

@@ -24,6 +24,12 @@ export const Route = createRootRoute({
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
     ],
+    scripts: [
+      {
+        children:
+          '(function(){try{var r=localStorage.getItem("nox-settings");if(!r)return;var t=JSON.parse(r).state&&JSON.parse(r).state.theme;if(t&&t!=="nox")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
+      },
+    ],
   }),
   component: RootComponent,
 });
