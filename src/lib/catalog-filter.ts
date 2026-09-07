@@ -191,6 +191,26 @@ export function catalogFiltersNeedPool(f: CatalogFilters) {
   return Boolean(f.yearFrom || f.yearTo || f.rating || f.runtime || (f.sort && f.sort !== "popular"));
 }
 
+/** Newest → oldest years covered by the filter. Empty if no year is set. */
+export function yearsFromFilters(filters: CatalogFilters): number[] {
+  if (!filters.yearFrom && !filters.yearTo) return [];
+  const from = Number(filters.yearFrom || filters.yearTo);
+  const to = Number(filters.yearTo || filters.yearFrom);
+  if (!Number.isInteger(from) || !Number.isInteger(to)) return [];
+  const lo = Math.max(1888, Math.min(from, to));
+  const hi = Math.min(YEAR_MAX, Math.max(from, to));
+  const years: number[] = [];
+  for (let y = hi; y >= lo; y--) years.push(y);
+  return years;
+}
+
+export function yearCatalogPageCount(yearCount: number, pages: number) {
+  if (yearCount <= 0) return Math.max(1, pages);
+  if (yearCount === 1) return Math.max(7, pages);
+  if (yearCount <= 12) return Math.max(2, pages);
+  return Math.max(1, pages);
+}
+
 export function matchingYearPreset(yearFrom: string, yearTo: string) {
   if (!yearFrom && !yearTo) return "";
   const a = Number(yearFrom);
@@ -215,6 +235,17 @@ function genresOf(item: MetaPreview): string[] {
 function ratingOf(item: MetaPreview): number | null {
   const n = typeof item.imdbRating === "number" ? item.imdbRating : Number.parseFloat(String(item.imdbRating ?? ""));
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function popularityOf(item: MetaPreview): number | null {
+  const extra = item as MetaPreview & { popularity?: number | Record<string, number> };
+  const p = extra.popularity;
+  if (typeof p === "number" && Number.isFinite(p) && p > 0) return p;
+  if (p && typeof p === "object") {
+    const n = Number(p.moviedb ?? p.trakt ?? p.stremio ?? 0);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
 }
 
 function runtimeOf(item: MetaPreview): number | null {
@@ -284,6 +315,15 @@ export function applyCatalogFilters(items: MetaPreview[], filters: CatalogFilter
       const ar = runtimeOf(a) ?? (filters.sort === "longest" ? -1 : 9999);
       const br = runtimeOf(b) ?? (filters.sort === "longest" ? -1 : 9999);
       return filters.sort === "longest" ? br - ar : ar - br;
+    });
+  } else if (filters.sort === "popular" && (filters.yearFrom || filters.yearTo)) {
+    sorted.sort((a, b) => {
+      const pa = popularityOf(a);
+      const pb = popularityOf(b);
+      if (pa != null && pb != null) return pb - pa;
+      if (pa != null) return -1;
+      if (pb != null) return 1;
+      return (ratingOf(b) ?? -1) - (ratingOf(a) ?? -1);
     });
   }
   return sorted;

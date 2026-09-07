@@ -12,7 +12,7 @@ import type {
   Stream,
   Subtitle,
 } from "./types";
-import { addonHasResource, resourceUrl } from "./urls";
+import { addonHasResource, CINEMETA_URL, resourceUrl } from "./urls";
 
 export async function loadJson(url: string): Promise<unknown> {
   if (url.startsWith("local://nox-open/")) return handleLocalOpen(url);
@@ -60,6 +60,27 @@ export async function fetchCatalog(
 }
 
 export const CATALOG_PAGE_SIZE = 50;
+const CATALOG_BATCH = 24;
+
+async function loadCatalogUrls(urls: string[]): Promise<MetaPreview[]> {
+  const seen = new Set<string>();
+  const items: MetaPreview[] = [];
+  for (let i = 0; i < urls.length; i += CATALOG_BATCH) {
+    const results = await loadJsonMany(urls.slice(i, i + CATALOG_BATCH));
+    for (const result of results) {
+      if (!result.ok) continue;
+      const metas = (result.data as CatalogResponse | null)?.metas;
+      if (!Array.isArray(metas)) continue;
+      for (const meta of metas) {
+        const key = `${meta.type}:${meta.id}`;
+        if (!meta?.id || seen.has(key)) continue;
+        seen.add(key);
+        items.push(meta);
+      }
+    }
+  }
+  return items;
+}
 
 export async function fetchCatalogPages(
   transportUrl: string,
@@ -76,21 +97,28 @@ export async function fetchCatalogPages(
       skip: skip || undefined,
     });
   });
-  const results = await loadJsonMany(urls);
-  const seen = new Set<string>();
-  const items: MetaPreview[] = [];
-  for (const result of results) {
-    if (!result.ok) continue;
-    const metas = (result.data as CatalogResponse | null)?.metas;
-    if (!Array.isArray(metas)) continue;
-    for (const meta of metas) {
-      const key = `${meta.type}:${meta.id}`;
-      if (!meta?.id || seen.has(key)) continue;
-      seen.add(key);
-      items.push(meta);
+  return loadCatalogUrls(urls);
+}
+
+/** Cinemeta's `year` catalog takes the year as the required `genre` extra. */
+export async function fetchCinemetaYearPages(
+  type: string,
+  years: number[],
+  pagesPerYear: number,
+): Promise<MetaPreview[]> {
+  const pages = Math.max(1, pagesPerYear);
+  const urls: string[] = [];
+  for (const year of years) {
+    for (let i = 0; i < pages; i++) {
+      urls.push(
+        resourceUrl(CINEMETA_URL, "catalog", type, "year", {
+          genre: String(year),
+          skip: i * CATALOG_PAGE_SIZE || undefined,
+        }),
+      );
     }
   }
-  return items;
+  return loadCatalogUrls(urls);
 }
 
 export async function fetchMeta(

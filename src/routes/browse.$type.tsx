@@ -10,9 +10,11 @@ import {
   MOVIE_GENRES,
   parseCatalogFilters,
   SERIES_GENRES,
+  yearCatalogPageCount,
+  yearsFromFilters,
   type CatalogFilters,
 } from "@/lib/catalog-filter";
-import { CATALOG_PAGE_SIZE, fetchCatalogPages } from "@/lib/stremio/client";
+import { CATALOG_PAGE_SIZE, fetchCatalogPages, fetchCinemetaYearPages } from "@/lib/stremio/client";
 import { CINEMETA_URL, enabledCatalogs } from "@/lib/stremio/urls";
 import { useAddonStore } from "@/stores/addons";
 
@@ -52,37 +54,54 @@ function BrowsePage() {
     (type === "series" ? [...SERIES_GENRES] : [...MOVIE_GENRES]);
 
   const needPool = catalogFiltersNeedPool(filters);
-  const pageCount = Math.max(pages, needPool ? 8 : 1);
+  const yearList = yearsFromFilters(filters);
+  const yearBrowse = yearList.length > 0 && (type === "movie" || type === "series");
+  const fetchYears = yearList.slice(0, 24);
+  const pageCount = yearBrowse
+    ? yearCatalogPageCount(fetchYears.length, pages)
+    : Math.max(pages, needPool ? 8 : 1);
 
   const query = useQuery({
-    queryKey: ["browse", selected?.transportUrl, selected?.type, selected?.id, filters.genre, pageCount],
-    enabled: Boolean(selected),
-    queryFn: () =>
-      fetchCatalogPages(
+    queryKey: [
+      "browse",
+      yearBrowse ? "year" : selected?.transportUrl,
+      selected?.type,
+      yearBrowse ? "year" : selected?.id,
+      yearBrowse ? fetchYears.join(",") : filters.genre,
+      pageCount,
+    ],
+    enabled: Boolean(selected) || yearBrowse,
+    queryFn: () => {
+      if (yearBrowse) return fetchCinemetaYearPages(type, fetchYears, pageCount);
+      return fetchCatalogPages(
         selected!.transportUrl,
         selected!.type,
         selected!.id,
         { genre: filters.genre || undefined },
         pageCount,
-      ),
+      );
+    },
     staleTime: 120_000,
   });
 
   const fallback = useQuery({
     queryKey: ["browse-fallback", type, filters.genre, pageCount],
-    enabled: catalogs.length === 0 && (type === "movie" || type === "series"),
+    enabled: !yearBrowse && catalogs.length === 0 && (type === "movie" || type === "series"),
     queryFn: () =>
       fetchCatalogPages(CINEMETA_URL, type, "top", { genre: filters.genre || undefined }, pageCount),
     staleTime: 120_000,
   });
 
-  const pool = (catalogs.length > 0 ? query.data : fallback.data) ?? [];
-  const loading = catalogs.length > 0 ? query.isLoading : fallback.isLoading;
+  const pool = (yearBrowse || catalogs.length > 0 ? query.data : fallback.data) ?? [];
+  const loading = yearBrowse || catalogs.length > 0 ? query.isLoading : fallback.isLoading;
   const items = useMemo(() => applyCatalogFilters(pool, filters), [pool, filters]);
-  const canLoadMore = pool.length >= pageCount * CATALOG_PAGE_SIZE - 5;
+  const canLoadMore = yearBrowse
+    ? pool.length >= fetchYears.length * pageCount * CATALOG_PAGE_SIZE - fetchYears.length * 5
+    : pool.length >= pageCount * CATALOG_PAGE_SIZE - 5;
 
   function setFilters(next: CatalogFilters) {
-    setPages(catalogFiltersNeedPool(next) ? 8 : 1);
+    const nextYears = yearsFromFilters(next);
+    setPages(nextYears.length ? 1 : catalogFiltersNeedPool(next) ? 8 : 1);
     void navigate({
       to: "/browse/$type",
       params: { type },
@@ -145,7 +164,7 @@ function BrowsePage() {
               <button
                 type="button"
                 className="h-11 rounded-full bg-elevated px-5 text-sm font-semibold touch-manipulation hover:bg-fg/10"
-                onClick={() => setPages((p) => p + 2)}
+                onClick={() => setPages((p) => Math.max(p, pageCount) + 2)}
               >
                 Load more
               </button>
