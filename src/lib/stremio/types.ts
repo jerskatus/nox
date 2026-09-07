@@ -157,6 +157,7 @@ export type MetaPreview = Pick<
   | "year"
   | "imdbRating"
   | "genres"
+  | "genre"
   | "posterShape"
   | "runtime"
 >;

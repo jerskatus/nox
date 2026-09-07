@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { FilterBar } from "@/components/catalog/filter-bar";
 import { PosterGrid } from "@/components/catalog/poster-card";
+import {
+  applyCatalogFilters,
+  DEFAULT_FILTERS,
+  MOVIE_GENRES,
+  SERIES_GENRES,
+  type CatalogFilters,
+} from "@/lib/catalog-filter";
 import { useLibraryStore } from "@/stores/library";
 
 export const Route = createFileRoute("/list")({
@@ -8,6 +17,9 @@ export const Route = createFileRoute("/list")({
 
 function ListPage() {
   const list = useLibraryStore((s) => s.list);
+  const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
+  const items = useMemo(() => applyCatalogFilters(list, filters), [list, filters]);
+  const genres = [...new Set([...MOVIE_GENRES, ...SERIES_GENRES])];
 
   return (
     <main className="px-4 pb-16 pt-[calc(var(--header-h)+0.75rem)] sm:px-8 lg:px-12">
@@ -21,7 +33,18 @@ function ListPage() {
           </Link>
         </div>
       ) : (
-        <PosterGrid items={list} />
+        <>
+          <FilterBar
+            value={filters}
+            onChange={setFilters}
+            genres={genres}
+            showKind
+            showRuntime={filters.kind !== "series"}
+            shown={items.length}
+            total={list.length}
+          />
+          <PosterGrid items={items} empty="Nothing on your list matches those filters." />
+        </>
       )}
     </main>
   );

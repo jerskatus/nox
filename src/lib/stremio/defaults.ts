@@ -134,16 +134,6 @@ export const STREAMING_CATALOGS_MANIFEST: Manifest = {
     { type: "series", id: "cru", name: "Crunchyroll" },
     { type: "movie", id: "stz", name: "Starz" },
     { type: "series", id: "stz", name: "Starz" },
-    { type: "movie", id: "mbi", name: "Mubi" },
-    { type: "movie", id: "shd", name: "Shudder" },
-    { type: "series", id: "shd", name: "Shudder" },
-    { type: "movie", id: "bbo", name: "BritBox" },
-    { type: "series", id: "bbo", name: "BritBox" },
-    { type: "series", id: "dpe", name: "Discovery+" },
-    { type: "movie", id: "cts", name: "Curiosity Stream" },
-    { type: "series", id: "cts", name: "Curiosity Stream" },
-    { type: "movie", id: "sst", name: "SkyShowtime" },
-    { type: "series", id: "sst", name: "SkyShowtime" },
   ],
 };
 

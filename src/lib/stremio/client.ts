@@ -59,6 +59,40 @@ export async function fetchCatalog(
   return Array.isArray(data?.metas) ? data.metas : [];
 }
 
+export const CATALOG_PAGE_SIZE = 50;
+
+export async function fetchCatalogPages(
+  transportUrl: string,
+  type: string,
+  id: string,
+  extra: Record<string, string | number | undefined> | undefined,
+  pageCount: number,
+): Promise<MetaPreview[]> {
+  const pages = Math.max(1, pageCount);
+  const urls = Array.from({ length: pages }, (_, i) => {
+    const skip = i * CATALOG_PAGE_SIZE;
+    return resourceUrl(transportUrl, "catalog", type, id, {
+      ...extra,
+      skip: skip || undefined,
+    });
+  });
+  const results = await loadJsonMany(urls);
+  const seen = new Set<string>();
+  const items: MetaPreview[] = [];
+  for (const result of results) {
+    if (!result.ok) continue;
+    const metas = (result.data as CatalogResponse | null)?.metas;
+    if (!Array.isArray(metas)) continue;
+    for (const meta of metas) {
+      const key = `${meta.type}:${meta.id}`;
+      if (!meta?.id || seen.has(key)) continue;
+      seen.add(key);
+      items.push(meta);
+    }
+  }
+  return items;
+}
+
 export async function fetchMeta(
   addons: InstalledAddon[],
   type: string,

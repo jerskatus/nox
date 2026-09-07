@@ -1,11 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Sparkles, Search as SearchIcon, Type } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { FilterBar } from "@/components/catalog/filter-bar";
 import { PosterGrid } from "@/components/catalog/poster-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardToggle, OnscreenKeyboard } from "@/components/ui/onscreen-keyboard";
+import {
+  applyCatalogFilters,
+  catalogFiltersSearch,
+  MOVIE_GENRES,
+  parseCatalogFilters,
+  SERIES_GENRES,
+  type CatalogFilters,
+} from "@/lib/catalog-filter";
 import { ASK_PROMPTS, runSearch } from "@/lib/stremio/ai-search";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -13,7 +22,7 @@ import { useEnabledAddons } from "@/stores/addons";
 import { useSettingsStore } from "@/stores/settings";
 
 type SearchMode = "smart" | "title";
-type Search = { q?: string; mode?: SearchMode };
+type Search = { q?: string; mode?: SearchMode } & ReturnType<typeof catalogFiltersSearch>;
 
 const MODE_KEY = "nox-search-mode";
 
@@ -21,12 +30,15 @@ export const Route = createFileRoute("/search")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     q: typeof s.q === "string" ? s.q : "",
     mode: s.mode === "title" || s.mode === "smart" ? s.mode : undefined,
+    ...catalogFiltersSearch(parseCatalogFilters(s)),
   }),
   component: SearchPage,
 });
 
 function SearchPage() {
-  const { q = "", mode: urlMode } = Route.useSearch();
+  const search = Route.useSearch();
+  const { q = "", mode: urlMode } = search;
+  const filters = useMemo(() => parseCatalogFilters(search), [search]);
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
   const [storedMode, setStoredMode] = useState<SearchMode>(() => useSettingsStore.getState().searchMode);
@@ -51,25 +63,44 @@ function SearchPage() {
     const handle = window.setTimeout(() => {
       const next = draft.trim();
       if (next === q.trim()) return;
-      void navigate({ to: "/search", search: { q: next, mode }, replace: true });
+      void navigate({
+        to: "/search",
+        search: { q: next, mode, ...catalogFiltersSearch(filters) },
+        replace: true,
+      });
     }, mode === "smart" ? 700 : 380);
     return () => window.clearTimeout(handle);
-  }, [draft, q, mode, navigate]);
+  }, [draft, q, mode, navigate, filters]);
 
-  function go(next: string, nextMode: SearchMode = mode) {
+  function go(next: string, nextMode: SearchMode = mode, nextFilters: CatalogFilters = filters) {
     typed.current = true;
     setDraft(next);
     window.localStorage.setItem(MODE_KEY, nextMode);
     setStoredMode(nextMode);
     useSettingsStore.getState().setSearchMode(nextMode);
-    void navigate({ to: "/search", search: { q: next, mode: nextMode } });
+    void navigate({
+      to: "/search",
+      search: { q: next, mode: nextMode, ...catalogFiltersSearch(nextFilters) },
+    });
   }
 
   function setMode(next: SearchMode) {
     window.localStorage.setItem(MODE_KEY, next);
     setStoredMode(next);
     useSettingsStore.getState().setSearchMode(next);
-    void navigate({ to: "/search", search: { q, mode: next }, replace: true });
+    void navigate({
+      to: "/search",
+      search: { q, mode: next, ...catalogFiltersSearch(filters) },
+      replace: true,
+    });
+  }
+
+  function setFilters(next: CatalogFilters) {
+    void navigate({
+      to: "/search",
+      search: { q, mode, ...catalogFiltersSearch(next) },
+      replace: true,
+    });
   }
 
   const query = useQuery({
@@ -80,10 +111,13 @@ function SearchPage() {
   });
 
   const intent = query.data?.intent;
-  const items = query.data?.items ?? [];
+  const pool = query.data?.items ?? [];
+  const items = useMemo(() => applyCatalogFilters(pool, filters), [pool, filters]);
   const movies = items.filter((item) => item.type === "movie");
   const shows = items.filter((item) => item.type === "series" || item.type === "tv");
   const other = items.filter((item) => item.type !== "movie" && item.type !== "series" && item.type !== "tv");
+  const mixed = Boolean(movies.length && shows.length) && mode === "smart" && !intent?.type;
+  const genreList = [...new Set([...MOVIE_GENRES, ...SERIES_GENRES])];
 
   return (
     <main className="px-4 pb-16 pt-[calc(var(--header-h)+0.75rem)] sm:px-8 lg:px-12">
@@ -177,7 +211,7 @@ function SearchPage() {
       ) : (
         <>
           {mode === "smart" && intent?.chips.length ? (
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium tracking-wide text-subtle uppercase">Nox understood</span>
               {intent.chips.map((chip) => (
                 <span key={chip} className="rounded-full bg-elevated px-3 py-1 text-xs text-muted">
@@ -187,26 +221,34 @@ function SearchPage() {
             </div>
           ) : null}
 
+          <FilterBar
+            value={filters}
+            onChange={setFilters}
+            genres={genreList}
+            showKind
+            showRuntime={filters.kind !== "series"}
+            shown={query.isLoading ? undefined : items.length}
+            total={query.isLoading ? undefined : pool.length}
+          />
+
           {query.isLoading ? (
             <PosterGrid loading />
-          ) : items.length === 0 ? (
+          ) : pool.length === 0 ? (
             <p className="text-center text-muted">
               {mode === "smart"
                 ? `Nothing matched “${q}”. Try a title, a vibe, or “like …”.`
                 : `No titles named “${q}”. Switch to Smart to search by plot.`}
             </p>
-          ) : (
+          ) : items.length === 0 ? (
+            <p className="text-center text-muted">Nothing matches those filters. Clear year or rating and try again.</p>
+          ) : mixed ? (
             <div className="flex flex-col gap-10">
-              {mode === "title" || intent?.type || !(movies.length && shows.length) ? (
-                <ResultGrid title={mode === "smart" ? "Best matches" : "Results"} items={items} />
-              ) : (
-                <>
-                  <ResultGrid title="Movies" items={movies} />
-                  <ResultGrid title="TV shows" items={shows} />
-                  <ResultGrid title="More" items={other} />
-                </>
-              )}
+              <ResultGrid title="Movies" items={movies} />
+              <ResultGrid title="TV shows" items={shows} />
+              <ResultGrid title="More" items={other} />
             </div>
+          ) : (
+            <ResultGrid title={mode === "smart" ? "Best matches" : "Results"} items={items} />
           )}
         </>
       )}
