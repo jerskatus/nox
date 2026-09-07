@@ -1,6 +1,7 @@
 import type { InstalledAddon, MetaPreview } from "./types";
 import { interpretAsk, type AskTitle } from "./ask";
 import { fetchCatalog, loadJsonMany } from "./client";
+import { MOODS, TROPES, anyKeyMatches } from "./search-packs";
 import { catalogsWithSearch, CINEMETA_URL, resourceUrl } from "./urls";
 
 export type SearchIntent = {
@@ -42,38 +43,8 @@ const GENRES = [
   "Thriller",
   "War",
   "Western",
+  "Music",
 ] as const;
-
-const MOODS: { keys: string[]; genres: string[]; label: string }[] = [
-  { keys: ["feel-good", "feel good", "cozy", "comfort", "wholesome", "heartwarming", "uplifting", "happy", "cheerful"], genres: ["Comedy", "Family", "Romance"], label: "feel-good" },
-  { keys: ["dark", "grim", "bleak", "gritty", "depressing", "heavy"], genres: ["Drama", "Thriller", "Crime"], label: "dark" },
-  { keys: ["mind-bending", "mind bending", "twisty", "cerebral", "trippy", "puzzle", "mindfuck"], genres: ["Mystery", "Sci-Fi", "Thriller"], label: "mind-bending" },
-  { keys: ["scary", "creepy", "spooky", "horror", "terrifying", "nightmare"], genres: ["Horror"], label: "scary" },
-  { keys: ["romcom", "rom-com", "romantic comedy", "romcoms"], genres: ["Romance", "Comedy"], label: "rom-com" },
-  { keys: ["heist", "caper", "bank robbery"], genres: ["Crime", "Action"], label: "heist" },
-  { keys: ["space", "astronaut", "galaxy", "outer space", "mars"], genres: ["Sci-Fi", "Adventure"], label: "space" },
-  { keys: ["time travel", "time-travel", "time loop", "timeloop"], genres: ["Sci-Fi", "Adventure"], label: "time travel" },
-  { keys: ["war", "ww2", "wwii", "vietnam", "battlefield"], genres: ["War", "History"], label: "war" },
-  { keys: ["true crime", "serial killer", "murder mystery"], genres: ["Crime", "Documentary"], label: "true crime" },
-  { keys: ["anime"], genres: ["Animation"], label: "anime" },
-  { keys: ["kids", "family friendly", "for kids", "child friendly", "disney kids"], genres: ["Family", "Animation"], label: "family" },
-  { keys: ["superhero", "marvel", "dc", "comic book"], genres: ["Action", "Adventure"], label: "superhero" },
-  { keys: ["rainy", "rainy-day", "rainy day"], genres: ["Drama", "Romance"], label: "rainy-day" },
-  { keys: ["christmas", "holiday", "xmas", "festive"], genres: ["Comedy", "Family", "Romance"], label: "holiday" },
-  { keys: ["coming of age", "coming-of-age", "teen movie", "high school"], genres: ["Drama"], label: "coming of age" },
-  { keys: ["funny", "hilarious", "goofy", "silly", "laugh"], genres: ["Comedy"], label: "funny" },
-  { keys: ["sad", "tearjerker", "cry", "heartbreaking", "tragic"], genres: ["Drama"], label: "tearjerker" },
-  { keys: ["slow burn", "slow-burn"], genres: ["Drama", "Romance"], label: "slow-burn" },
-  { keys: ["fast", "adrenaline", "action packed", "action-packed"], genres: ["Action"], label: "adrenaline" },
-  { keys: ["steamy", "sexy", "erotic", "spicy"], genres: ["Romance", "Drama"], label: "steamy" },
-  { keys: ["campy", "cheesy", "so-bad-it's-good"], genres: ["Comedy", "Horror"], label: "campy" },
-  { keys: ["epic", "sweeping"], genres: ["Adventure", "Drama"], label: "epic" },
-  { keys: ["quirky", "offbeat", "indie", "wes anderson"], genres: ["Comedy", "Drama"], label: "quirky" },
-  { keys: ["smart", "witty", "clever"], genres: ["Comedy", "Drama"], label: "witty" },
-  { keys: ["brutal", "violent", "gory", "bloody"], genres: ["Action", "Horror"], label: "brutal" },
-  { keys: ["cozy mystery", "cozy crime"], genres: ["Mystery", "Crime"], label: "cozy-mystery" },
-  { keys: ["found family", "found-family"], genres: ["Drama", "Adventure"], label: "found-family" },
-];
 
 const STOP = new Set([
   "a", "an", "the", "of", "and", "or", "in", "on", "for", "with", "to", "me", "i", "my",
@@ -216,212 +187,25 @@ const SIMILAR: Record<string, string[]> = {
   "ted lasso": ["Shrinking", "The Good Place", "Abbott Elementary", "Friday Night Lights"],
   "friday night lights": ["Ted Lasso", "Coach Carter", "Remember the Titans", "All American"],
   "the white lotus": ["The Menu", "Triangle of Sadness", "The Resort", "Nine Perfect Strangers"],
+  airplane: ["The Naked Gun", "Hot Shots!", "Scary Movie", "Police Academy"],
+  "the naked gun": ["Airplane!", "Hot Shots!", "The Pink Panther", "Spy"],
+  "dr strangelove": ["Network", "Wag the Dog", "The Death of Stalin", "Don't Look Up"],
+  "don't look up": ["Dr. Strangelove", "Idiocracy", "Network", "Wag the Dog"],
+  "blazing saddles": ["Airplane!", "The Naked Gun", "Spaceballs", "Robin Hood: Men in Tights"],
+  spaceballs: ["Galaxy Quest", "Hot Shots!", "Austin Powers: International Man of Mystery", "The Naked Gun"],
+  "austin powers": ["Spy", "Johnny English", "The Naked Gun", "Kingsman: The Secret Service"],
+  "this is spinal tap": ["Best in Show", "Walk Hard: The Dewey Cox Story", "Popstar: Never Stop Never Stopping", "A Mighty Wind"],
 };
-
-const TROPES: { keys: string[]; titles: string[]; chips: string[]; kind?: "movie" | "series" }[] = [
-  {
-    keys: ["road trip", "roadtrip", "road-trip", "on a trip", "cross country", "cross-country"],
-    titles: ["Road Trip", "Thelma & Louise", "Dumb and Dumber", "Little Miss Sunshine", "Superbad", "Harold & Kumar Go to White Castle", "EuroTrip", "Due Date", "Planes, Trains and Automobiles", "National Lampoon's Vacation", "Easy Rider", "Sideways", "Almost Famous", "Stand by Me", "We're the Millers"],
-    chips: ["road trip"],
-  },
-  {
-    keys: ["heist", "caper", "bank job", "casino robbery", "steal the"],
-    titles: ["Ocean's Eleven", "The Italian Job", "Heat", "Inside Man", "Logan Lucky", "Now You See Me", "The Town", "Den of Thieves", "Baby Driver", "Widows"],
-    chips: ["heist"],
-  },
-  {
-    keys: ["time loop", "same day over", "repeating day", "stuck in a loop"],
-    titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Russian Doll", "The Map of Tiny Perfect Things", "ARQ"],
-    chips: ["time loop"],
-  },
-  {
-    keys: ["time travel"],
-    titles: ["Back to the Future", "Looper", "12 Monkeys", "Primer", "About Time", "The Time Traveler's Wife", "Arrival", "Interstellar"],
-    chips: ["time travel"],
-  },
-  {
-    keys: ["buddy cop", "buddy cops", "cop duo"],
-    titles: ["Lethal Weapon", "Bad Boys", "Rush Hour", "21 Jump Street", "The Nice Guys", "Hot Fuzz", "The Other Guys", "Kiss Kiss Bang Bang"],
-    chips: ["buddy cop"],
-  },
-  {
-    keys: ["workplace comedy", "office comedy", "job comedy"],
-    titles: ["The Office", "Parks and Recreation", "Superstore", "Abbott Elementary", "Industry", "Severance", "The Bear"],
-    chips: ["workplace"],
-    kind: "series",
-  },
-  {
-    keys: ["found family", "found-family", "makeshift family"],
-    titles: ["Guardians of the Galaxy", "The Goonies", "Lilo & Stitch", "The Umbrella Academy", "Stranger Things", "The Mandalorian", "Everything Everywhere All at Once"],
-    chips: ["found family"],
-  },
-  {
-    keys: ["enemies to lovers", "hate each other then", "rivals in love"],
-    titles: ["10 Things I Hate About You", "Pride & Prejudice", "When Harry Met Sally", "The Proposal", "How to Lose a Guy in 10 Days", "You've Got Mail", "To All the Boys I've Loved Before"],
-    chips: ["enemies to lovers", "rom-com"],
-  },
-  {
-    keys: ["fake dating", "fake relationship", "pretend to date", "contract relationship"],
-    titles: ["The Proposal", "To All the Boys I've Loved Before", "Can't Buy Me Love", "The Wedding Date", "Set It Up", "What's Your Number?"],
-    chips: ["fake dating", "rom-com"],
-  },
-  {
-    keys: ["wedding", "bridesmaid", "bachelor party"],
-    titles: ["Bridesmaids", "The Hangover", "Wedding Crashers", "My Best Friend's Wedding", "27 Dresses", "Father of the Bride", "The Wedding Singer"],
-    chips: ["wedding"],
-  },
-  {
-    keys: ["high school", "teen movie", "teen comedy"],
-    titles: ["Mean Girls", "10 Things I Hate About You", "Clueless", "Superbad", "Easy A", "Booksmart", "Lady Bird", "The Breakfast Club"],
-    chips: ["high school"],
-  },
-  {
-    keys: ["coming of age", "growing up"],
-    titles: ["Lady Bird", "The Perks of Being a Wallflower", "Stand by Me", "Moonlight", "Boyhood", "Eighth Grade", "The Spectacular Now", "Call Me by Your Name"],
-    chips: ["coming of age"],
-  },
-  {
-    keys: ["survival", "stranded", "desert island", "wilderness"],
-    titles: ["Cast Away", "The Revenant", "127 Hours", "Into the Wild", "The Martian", "Life of Pi", "Alive", "The Grey"],
-    chips: ["survival"],
-  },
-  {
-    keys: ["apocalypse", "end of the world", "post-apocalyptic", "post apocalyptic"],
-    titles: ["Children of Men", "Mad Max: Fury Road", "The Road", "A Quiet Place", "28 Days Later", "Station Eleven", "The Last of Us", "Snowpiercer"],
-    chips: ["apocalypse"],
-  },
-  {
-    keys: ["zombie", "zombies", "undead"],
-    titles: ["28 Days Later", "Shaun of the Dead", "Zombieland", "Train to Busan", "World War Z", "Dawn of the Dead", "The Walking Dead"],
-    chips: ["zombies"],
-  },
-  {
-    keys: ["vampire", "vampires"],
-    titles: ["Let the Right One In", "What We Do in the Shadows", "Interview with the Vampire", "Only Lovers Left Alive", "The Lost Boys", "Twilight", "True Blood"],
-    chips: ["vampires"],
-  },
-  {
-    keys: ["serial killer", "murderer hunting"],
-    titles: ["Zodiac", "Se7en", "Mindhunter", "The Silence of the Lambs", "Memories of Murder", "No Country for Old Men", "The Night Of"],
-    chips: ["serial killer"],
-  },
-  {
-    keys: ["courtroom", "trial", "lawyer movie", "legal drama"],
-    titles: ["A Few Good Men", "To Kill a Mockingbird", "The Verdict", "Philadelphia", "Primal Fear", "The Lincoln Lawyer", "Better Call Saul"],
-    chips: ["courtroom"],
-  },
-  {
-    keys: ["spy", "espionage", "secret agent", "cia", "mi6"],
-    titles: ["Tinker Tailor Soldier Spy", "The Bourne Identity", "Casino Royale", "Mission: Impossible", "Atomic Blonde", "Slow Horses", "The Americans"],
-    chips: ["spy"],
-  },
-  {
-    keys: ["hitman", "assassin", "contract killer"],
-    titles: ["John Wick", "Léon: The Professional", "The Killer", "Mr. & Mrs. Smith", "Grosse Pointe Blank", "Atomic Blonde", "Nobody"],
-    chips: ["assassin"],
-  },
-  {
-    keys: ["sports", "underdog team", "underdog sports", "football movie", "basketball movie", "boxing"],
-    titles: ["Rocky", "Remember the Titans", "Friday Night Lights", "Moneyball", "Coach Carter", "The Blind Side", "Creed", "Rush"],
-    chips: ["sports"],
-  },
-  {
-    keys: ["chef", "restaurant", "cooking", "kitchen"],
-    titles: ["The Bear", "The Menu", "Chef", "Julie & Julia", "Burnt", "Boiling Point", "Ratatouille"],
-    chips: ["kitchen"],
-  },
-  {
-    keys: ["haunted house", "haunted", "ghost story", "ghosts"],
-    titles: ["The Conjuring", "The Others", "The Haunting", "Hereditary", "The Babadook", "His House", "Poltergeist"],
-    chips: ["haunted"],
-  },
-  {
-    keys: ["home invasion"],
-    titles: ["The Strangers", "Don't Breathe", "The Purge", "Funny Games", "Panic Room", "The Gift"],
-    chips: ["home invasion"],
-  },
-  {
-    keys: ["space", "astronaut", "on mars", "in space"],
-    titles: ["The Martian", "Gravity", "Interstellar", "Alien", "Moon", "First Man", "Apollo 13", "Ad Astra"],
-    chips: ["space"],
-  },
-  {
-    keys: ["robots", "ai", "artificial intelligence", "android"],
-    titles: ["Ex Machina", "Her", "The Terminator", "Blade Runner 2049", "A.I. Artificial Intelligence", "I, Robot", "The Creator"],
-    chips: ["AI"],
-  },
-  {
-    keys: ["musical", "singing", "song and dance"],
-    titles: ["La La Land", "Whiplash", "The Greatest Showman", "Tick, Tick... Boom!", "West Side Story", "Chicago", "Les Misérables"],
-    chips: ["musical"],
-  },
-  {
-    keys: ["christmas", "xmas", "holiday movie"],
-    titles: ["Love Actually", "The Holiday", "Home Alone", "Elf", "Die Hard", "It's a Wonderful Life", "The Santa Clause", "Klaus"],
-    chips: ["christmas"],
-  },
-  {
-    keys: ["heist crew", "one last job"],
-    titles: ["Heat", "The Town", "Logan Lucky", "Widows", "Ocean's Eleven"],
-    chips: ["one last job"],
-  },
-  {
-    keys: ["small town", "small-town"],
-    titles: ["Fargo", "Twin Peaks", "Stranger Things", "Sharp Objects", "Three Billboards Outside Ebbing, Missouri", "The Truman Show"],
-    chips: ["small town"],
-  },
-  {
-    keys: ["based on a true story", "true story", "based on true"],
-    titles: ["Spotlight", "The Social Network", "Catch Me If You Can", "The Wolf of Wall Street", "Ford v Ferrari", "Apollo 13", "Schindler's List"],
-    chips: ["true story"],
-  },
-  {
-    keys: ["con artist", "grifter", "scam", "catfish"],
-    titles: ["Catch Me If You Can", "The Sting", "American Hustle", "Focus", "The Talented Mr. Ripley", "Inventing Anna"],
-    chips: ["con"],
-  },
-  {
-    keys: ["revenge", "payback", "get even"],
-    titles: ["Kill Bill", "Oldboy", "John Wick", "The Count of Monte Cristo", "Gone Girl", "Promising Young Woman", "Taken"],
-    chips: ["revenge"],
-  },
-  {
-    keys: ["disaster", "earthquake", "tsunami", "volcano", "asteroid"],
-    titles: ["Twister", "The Day After Tomorrow", "Armageddon", "Deep Impact", "2012", "San Andreas", "Don't Look Up"],
-    chips: ["disaster"],
-  },
-  {
-    keys: ["pirates", "pirate"],
-    titles: ["Pirates of the Caribbean: The Curse of the Black Pearl", "Captain Phillips", "The Goonies", "Our Flag Means Death", "Treasure Island"],
-    chips: ["pirates"],
-  },
-  {
-    keys: ["western", "cowboys", "wild west"],
-    titles: ["The Good, the Bad and the Ugly", "True Grit", "No Country for Old Men", "The Hateful Eight", "3:10 to Yuma", "Tombstone", "Yellowstone"],
-    chips: ["western"],
-  },
-  {
-    keys: ["prison", "jailbreak", "escape from prison"],
-    titles: ["The Shawshank Redemption", "Escape from Alcatraz", "The Great Escape", "Cool Hand Luke", "Papillon", "Prison Break", "The Green Mile"],
-    chips: ["prison"],
-  },
-  {
-    keys: ["whodunit", "who done it", "murder mystery dinner", "detective mystery"],
-    titles: ["Knives Out", "Clue", "Murder on the Orient Express", "Gone Girl", "The Girl with the Dragon Tattoo", "Zodiac", "See How They Run"],
-    chips: ["whodunit"],
-  },
-];
 
 export const ASK_PROMPTS = [
   "Feel-good 90s romcoms",
   "Shows like The Bear",
-  "Dark mind-bending sci-fi",
-  "Korean thrillers",
-  "Cozy rainy-day movies",
-  "Heist movies from the 2000s",
-  "Best friends on a road trip",
+  "Satire or parody",
+  "Eat the rich",
   "Enemies to lovers",
   "Time-loop movies",
+  "Dark academia",
+  "Heist movies from the 2000s",
 ];
 
 export function parseIntent(raw: string): SearchIntent {
@@ -452,7 +236,7 @@ export function parseIntent(raw: string): SearchIntent {
   const moods: string[] = [];
   const romcom = /\b(romcom|rom-com|romcoms|romantic comedy|romantic comedies)\b/.test(lower);
   for (const mood of MOODS) {
-    if (!mood.keys.some((key) => lower.includes(key)) && !(romcom && mood.label === "rom-com")) continue;
+    if (!anyKeyMatches(q, mood.keys) && !(romcom && mood.label === "rom-com")) continue;
     moods.push(mood.label);
     for (const genre of mood.genres) {
       if (romcom && genre === "Family") continue;
@@ -510,15 +294,16 @@ export function parseIntent(raw: string): SearchIntent {
     .map((part) => part.trim())
     .filter((part) => part.length > 1 && !STOP.has(part));
 
+  const tropesHit = TROPES.some((trope) => anyKeyMatches(q, trope.keys));
   const ask =
-    Boolean(like || moods.length || yearFrom || (genres.length && q.split(/\s+/).length >= 3)) ||
+    Boolean(like || moods.length || tropesHit || yearFrom || (genres.length && q.split(/\s+/).length >= 3)) ||
     /\b(about|vibe|mood|recommend|something)\b/.test(lower) ||
     q.split(/\s+/).length >= 5;
 
   const chips: string[] = [];
   if (type === "series") chips.push("TV shows");
   if (type === "movie") chips.push("Movies");
-  chips.push(...moods);
+  chips.push(...moods.slice(0, 4));
   chips.push(...genres.slice(0, 3));
   if (yearFrom && yearTo) chips.push(yearFrom === yearTo - 9 ? `${yearFrom}s` : `${yearFrom}–${yearTo}`);
   if (like) chips.push(`like ${like}`);
@@ -618,12 +403,14 @@ export async function smartSearch(query: string, addons: InstalledAddon[]): Prom
   items: RankedTitle[];
 }> {
   const intent = parseIntent(query);
+  const tropes = tropeTitles(intent);
 
-  if (intent.ask) {
+  if (intent.ask || tropes.length) {
     const grok = await interpretAsk({ data: { query } });
-    const wanted: AskTitle[] = grok.ok
-      ? grok.titles
-      : tropeTitles(intent);
+    const wanted: AskTitle[] = uniqueWanted([
+      ...tropes.slice(0, 12),
+      ...(grok.ok ? grok.titles : []),
+    ]);
     if (grok.ok) {
       if (grok.type) intent.type = grok.type;
       intent.chips = unique([...grok.chips, ...intent.chips]).slice(0, 8);
@@ -866,22 +653,46 @@ function unique(items: string[]) {
   return out;
 }
 
-function tropeTitles(intent: SearchIntent): AskTitle[] {
-  const q = intent.raw.toLowerCase();
+function uniqueWanted(rows: AskTitle[]): AskTitle[] {
+  const seen = new Set<string>();
   const out: AskTitle[] = [];
+  for (const row of rows) {
+    const key = row.name.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out.slice(0, 16);
+}
+
+function tropeTitles(intent: SearchIntent): AskTitle[] {
+  const groups: AskTitle[][] = [];
   for (const trope of TROPES) {
-    if (!trope.keys.some((key) => q.includes(key))) continue;
+    if (!anyKeyMatches(intent.raw, trope.keys)) continue;
     intent.chips = unique([...trope.chips, ...intent.chips]);
     if (trope.kind) intent.type = intent.type ?? trope.kind;
-    for (const name of trope.titles) {
-      out.push({
+    groups.push(
+      trope.titles.map((name) => ({
         name,
         type: trope.kind ?? intent.type ?? "movie",
         why: trope.chips[0] ?? "match",
-      });
-    }
+      })),
+    );
   }
-  return out.slice(0, 16);
+  const mixed: AskTitle[] = [];
+  let i = 0;
+  while (mixed.length < 24) {
+    let added = false;
+    for (const group of groups) {
+      if (i < group.length) {
+        mixed.push(group[i]);
+        added = true;
+      }
+    }
+    if (!added) break;
+    i += 1;
+  }
+  return uniqueWanted(mixed);
 }
 
 async function resolveNamedTitles(wanted: AskTitle[], intent: SearchIntent): Promise<RankedTitle[]> {
