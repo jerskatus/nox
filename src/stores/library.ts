@@ -120,3 +120,13 @@ export function progressRatio(item: Pick<ProgressItem, "position" | "duration">)
   return Math.min(1, Math.max(0, item.position / item.duration));
 }
 
+export function isWatched(videoId: string, watched: string[], progress: ProgressItem[]) {
+  if (watched.includes(videoId)) return true;
+  const item = progress.find((entry) => entry.videoId === videoId);
+  if (!item) return false;
+  return progressRatio(item) >= 0.92;
+}
+
+export function progressFor(videoId: string, progress: ProgressItem[]) {
+  return progress.find((entry) => entry.videoId === videoId) ?? null;
+}

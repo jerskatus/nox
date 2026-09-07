@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const UrlInput = z.object({ url: z.string().min(8).max(4000) });
-const UrlsInput = z.object({ urls: z.array(z.string().min(8).max(4000)).max(24) });
+const UrlsInput = z.object({ urls: z.array(z.string().min(8).max(4000)).max(32) });
 
 export type Json =
   | string
@@ -27,7 +27,7 @@ export const fetchAddonJsonMany = createServerFn({ method: "POST" })
   .validator((input: unknown) => UrlsInput.parse(input))
   .handler(async ({ data }): Promise<AddonFetchResult[]> => {
     const { proxyAddonJson } = await import("./proxy.server");
-    const unique = [...new Set(data.urls)].slice(0, 24);
+    const unique = [...new Set(data.urls)].slice(0, 32);
     return Promise.all(
       unique.map(async (url): Promise<AddonFetchResult> => {
         try {

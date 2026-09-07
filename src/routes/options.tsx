@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { Download, Monitor } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { DESKTOP_RELEASES_URL, isNoxDesktop } from "@/lib/desktop";
 import {
   THEMES,
   useSettingsStore,
@@ -45,6 +48,8 @@ function OptionsPage() {
     <main className="mx-auto max-w-3xl px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8">
       <h1 className="text-3xl font-semibold">Options</h1>
       <p className="mt-2 mb-10 text-muted">Playback, search, and how Nox looks.</p>
+
+      <DesktopSection />
 
       <Section title="Playback">
         <Row
@@ -165,6 +170,46 @@ function OptionsPage() {
         />
       </Section>
     </main>
+  );
+}
+
+function DesktopSection() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    setDesktop(isNoxDesktop());
+  }, []);
+
+  return (
+    <Section title="Desktop app">
+      <div className="bg-surface px-4 py-5">
+        {desktop ? (
+          <>
+            <p className="flex items-center gap-2 font-medium">
+              <Monitor className="size-4 text-accent" />
+              You’re in the Nox app
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              The catalog is the live site. When Nox updates, this window picks it up on its own — no reinstall. Playing
+              something? It waits until you leave the player.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium">Nox on your computer</p>
+            <p className="mt-2 mb-4 text-sm text-muted">
+              Install once. The app is a thin window around the live catalog, so every site update shows up here too —
+              list, player, new features included.
+            </p>
+            <Button asChild variant="play">
+              <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
+                <Download className="size-4" />
+                Get Nox for Windows, Mac, or Linux
+              </a>
+            </Button>
+          </>
+        )}
+      </div>
+    </Section>
   );
 }
 

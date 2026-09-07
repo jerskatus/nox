@@ -206,9 +206,10 @@ export function yearsFromFilters(filters: CatalogFilters): number[] {
 
 export function yearCatalogPageCount(yearCount: number, pages: number) {
   if (yearCount <= 0) return Math.max(1, pages);
-  if (yearCount === 1) return Math.max(7, pages);
-  if (yearCount <= 12) return Math.max(2, pages);
-  return Math.max(1, pages);
+  if (yearCount === 1) return Math.max(12, pages);
+  if (yearCount <= 3) return Math.max(6, pages);
+  if (yearCount <= 12) return Math.max(4, pages);
+  return Math.max(2, pages);
 }
 
 export function matchingYearPreset(yearFrom: string, yearTo: string) {
@@ -219,7 +220,8 @@ export function matchingYearPreset(yearFrom: string, yearTo: string) {
 }
 
 function yearsOf(item: MetaPreview): number[] {
-  const raw = `${item.year ?? ""} ${item.releaseInfo ?? ""}`;
+  const extra = item as MetaPreview & { released?: string };
+  const raw = `${item.year ?? ""} ${item.releaseInfo ?? ""} ${extra.released ?? ""}`;
   const found = [...raw.matchAll(/\b(18|19|20)\d{2}\b/g)]
     .map((m) => Number(m[0]))
     .filter((y) => y >= 1888 && y <= YEAR_MAX);

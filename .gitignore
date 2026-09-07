@@ -16,3 +16,6 @@ artifacts
 attachments
 .grok
 tmp-*.mjs
+desktop/node_modules
+desktop/dist
+desktop/out

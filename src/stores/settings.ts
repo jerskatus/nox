@@ -24,6 +24,8 @@ type SettingsState = {
   skipIntros: boolean;
   rememberStream: boolean;
   playbackRate: PlaybackRate;
+  volume: number;
+  muted: boolean;
   subtitles: SubtitleMode;
   searchMode: SearchModePref;
   tvRemote: boolean;
@@ -35,6 +37,8 @@ type SettingsState = {
   setSkipIntros: (value: boolean) => void;
   setRememberStream: (value: boolean) => void;
   setPlaybackRate: (value: PlaybackRate) => void;
+  setVolume: (value: number) => void;
+  setMuted: (value: boolean) => void;
   setSubtitles: (value: SubtitleMode) => void;
   setSearchMode: (value: SearchModePref) => void;
   setTvRemote: (value: boolean) => void;
@@ -55,6 +59,8 @@ export const useSettingsStore = create<SettingsState>()(
       skipIntros: false,
       rememberStream: true,
       playbackRate: 1,
+      volume: 1,
+      muted: false,
       subtitles: "last",
       searchMode: "smart",
       tvRemote: false,
@@ -66,6 +72,15 @@ export const useSettingsStore = create<SettingsState>()(
       setSkipIntros: (skipIntros) => set({ skipIntros }),
       setRememberStream: (rememberStream) => set({ rememberStream }),
       setPlaybackRate: (playbackRate) => set({ playbackRate }),
+      setVolume: (volume) => {
+        const next = Math.min(1, Math.max(0, volume));
+        set({ volume: next, muted: next === 0 });
+      },
+      setMuted: (muted) =>
+        set((state) => ({
+          muted,
+          volume: !muted && state.volume === 0 ? 1 : state.volume,
+        })),
       setSubtitles: (subtitles) => set({ subtitles }),
       setSearchMode: (searchMode) => {
         if (typeof window !== "undefined") window.localStorage.setItem("nox-search-mode", searchMode);
@@ -85,6 +100,8 @@ export const useSettingsStore = create<SettingsState>()(
         skipIntros: state.skipIntros,
         rememberStream: state.rememberStream,
         playbackRate: state.playbackRate,
+        volume: state.volume,
+        muted: state.muted,
         subtitles: state.subtitles,
         searchMode: state.searchMode,
         tvRemote: state.tvRemote,

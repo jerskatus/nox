@@ -8,6 +8,7 @@ import {
   RATING_PRESETS,
   RUNTIME_PRESETS,
   SORT_PRESETS,
+  YEAR_MAX,
   YEAR_OPTIONS,
   YEAR_PRESETS,
   type CatalogFilters,
@@ -43,7 +44,12 @@ export function FilterBar({
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(null);
+      const target = event.target;
+      if (root.current?.contains(target as Node)) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLSelectElement || active instanceof HTMLInputElement) return;
+      if (target instanceof Element && (target.tagName === "OPTION" || target.tagName === "SELECT")) return;
+      setOpen(null);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(null);
@@ -208,15 +214,21 @@ export function FilterBar({
             </Chip>
           ))}
           <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
+          <YearJump
+            onPick={(year) => {
+              set({ yearFrom: year, yearTo: year });
+              setOpen(null);
+            }}
+          />
           <YearSelect
             label="From"
             value={value.yearFrom}
             onChange={(yearFrom) => {
               const cur = latest.current;
-              set({
-                yearFrom,
-                yearTo: cur.yearTo && yearFrom && Number(cur.yearTo) < Number(yearFrom) ? yearFrom : cur.yearTo,
-              });
+              let yearTo = cur.yearTo;
+              if (yearFrom && !yearTo) yearTo = yearFrom;
+              else if (yearFrom && yearTo && Number(yearTo) < Number(yearFrom)) yearTo = yearFrom;
+              set({ yearFrom, yearTo });
             }}
           />
           <YearSelect
@@ -224,10 +236,10 @@ export function FilterBar({
             value={value.yearTo}
             onChange={(yearTo) => {
               const cur = latest.current;
-              set({
-                yearTo,
-                yearFrom: cur.yearFrom && yearTo && Number(cur.yearFrom) > Number(yearTo) ? yearTo : cur.yearFrom,
-              });
+              let yearFrom = cur.yearFrom;
+              if (yearTo && !yearFrom) yearFrom = yearTo;
+              else if (yearTo && yearFrom && Number(yearFrom) > Number(yearTo)) yearFrom = yearTo;
+              set({ yearFrom, yearTo });
             }}
           />
         </Panel>
@@ -386,6 +398,7 @@ function YearSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onPointerDown={(e) => e.stopPropagation()}
         className="h-10 bg-transparent text-sm text-fg outline-none"
         aria-label={label}
       >
@@ -396,6 +409,31 @@ function YearSelect({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+function YearJump({ onPick }: { onPick: (year: string) => void }) {
+  return (
+    <label className="inline-flex h-10 items-center gap-1.5 rounded-full bg-elevated px-2.5 text-sm text-muted">
+      <span className="text-2xs font-semibold tracking-wide uppercase">Jump</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={1888}
+        max={YEAR_MAX}
+        placeholder="1995"
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          const n = Number((event.target as HTMLInputElement).value);
+          if (!Number.isInteger(n) || n < 1888 || n > YEAR_MAX) return;
+          onPick(String(n));
+        }}
+        className="h-10 w-16 bg-transparent text-sm text-fg outline-none"
+        aria-label="Jump to year"
+      />
     </label>
   );
 }

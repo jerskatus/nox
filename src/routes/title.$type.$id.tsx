@@ -11,7 +11,7 @@ import { defaultVideoId, fetchCatalog, fetchMeta, videoTitle } from "@/lib/strem
 import { CINEMETA_URL } from "@/lib/stremio/urls";
 import type { Meta, Video } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
-import { useLibraryStore } from "@/stores/library";
+import { isWatched, progressFor, progressRatio, useLibraryStore } from "@/stores/library";
 import { cn, decodeId, formatRating } from "@/lib/utils";
 
 export const Route = createFileRoute("/title/$type/$id")({
@@ -203,7 +203,10 @@ function TitleBody({ meta }: { meta: Meta }) {
       {episodes.length > 0 ? (
         <section className="px-4 py-10 sm:px-8 lg:px-12">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Episodes</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Episodes</h2>
+              <SeasonCount episodes={episodes} />
+            </div>
             {seasons.length > 1 ? (
               <select
                 value={season}
@@ -239,35 +242,63 @@ function TitleBody({ meta }: { meta: Meta }) {
   );
 }
 
+function SeasonCount({ episodes }: { episodes: Video[] }) {
+  const watched = useLibraryStore((s) => s.watched);
+  const progress = useLibraryStore((s) => s.progress);
+  const done = episodes.filter((episode) => isWatched(episode.id, watched, progress)).length;
+  if (episodes.length === 0) return null;
+  return (
+    <p className="mt-0.5 text-sm text-muted">
+      {done === 0 ? `${episodes.length} episodes` : `${done} of ${episodes.length} watched`}
+    </p>
+  );
+}
+
 function EpisodeRow({ meta, episode }: { meta: Meta; episode: Video }) {
   const href = watchPath(meta, episode.id);
   const n = episode.episode ?? episode.number;
+  const watchedIds = useLibraryStore((s) => s.watched);
+  const progressList = useLibraryStore((s) => s.progress);
+  const done = isWatched(episode.id, watchedIds, progressList);
+  const stored = progressFor(episode.id, progressList);
+  const ratio = stored && !done ? progressRatio(stored) : 0;
+  const inProgress = ratio > 0.02 && ratio < 0.92;
+
   return (
     <Link
       {...href}
       className={cn(
         "flex gap-3 rounded-md bg-surface p-2 transition-colors duration-150 touch-manipulation hover:bg-elevated sm:p-3",
+        done && "opacity-70",
       )}
     >
-      {episode.thumbnail ? (
-        <img
-          src={episode.thumbnail}
-          alt=""
-          className="h-20 w-36 shrink-0 rounded-sm object-cover sm:h-24 sm:w-44"
-        />
-      ) : (
-        <div className="grid h-20 w-36 shrink-0 place-items-center rounded-sm bg-elevated text-2xl text-subtle">
-          {n ?? ""}
-        </div>
-      )}
+      <div className="relative h-20 w-36 shrink-0 overflow-hidden rounded-sm sm:h-24 sm:w-44">
+        {episode.thumbnail ? (
+          <img src={episode.thumbnail} alt="" className="size-full object-cover" />
+        ) : (
+          <div className="grid size-full place-items-center bg-elevated text-2xl text-subtle">{n ?? ""}</div>
+        )}
+        {done ? (
+          <>
+            <span className="absolute inset-0 bg-bg/45" />
+            <span className="absolute top-1.5 left-1.5 grid size-7 place-items-center rounded-full bg-fg text-bg">
+              <Check className="size-3.5" />
+            </span>
+          </>
+        ) : null}
+        {inProgress ? (
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-fg/20">
+            <div className="h-full bg-accent" style={{ width: `${Math.round(ratio * 100)}%` }} />
+          </div>
+        ) : null}
+      </div>
       <div className="min-w-0 py-1">
-        <p className="truncate font-medium">
+        <p className={cn("truncate font-medium", done && "text-muted")}>
           {n ? `${n}. ` : ""}
           {videoTitle(episode)}
+          {inProgress ? <span className="ml-2 text-xs font-semibold text-fg">Resume</span> : null}
         </p>
-        <p className="mt-1 line-clamp-2 text-sm text-muted">
-          {episode.overview ?? episode.description ?? ""}
-        </p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted">{episode.overview ?? episode.description ?? ""}</p>
       </div>
     </Link>
   );

@@ -1,6 +1,8 @@
 import type { InstalledAddon, Manifest, ManifestResource } from "./types";
 
 export const CINEMETA_URL = "https://v3-cinemeta.strem.io/manifest.json";
+/** Year catalogs live on this host (v3-cinemeta 307s here). Hit it directly. */
+export const CINEMETA_YEAR_URL = "https://cinemeta-catalogs.strem.io/year/manifest.json";
 export const OPENSUBTITLES_URL = "https://opensubtitles-v3.strem.io/manifest.json";
 export const WATCHHUB_URL = "https://watchhub.strem.io/manifest.json";
 export const STREAMING_CATALOGS_URL =

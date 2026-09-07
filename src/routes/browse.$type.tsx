@@ -56,7 +56,7 @@ function BrowsePage() {
   const needPool = catalogFiltersNeedPool(filters);
   const yearList = yearsFromFilters(filters);
   const yearBrowse = yearList.length > 0 && (type === "movie" || type === "series");
-  const fetchYears = yearList.slice(0, 24);
+  const fetchYears = yearList.slice(0, 40);
   const pageCount = yearBrowse
     ? yearCatalogPageCount(fetchYears.length, pages)
     : Math.max(pages, needPool ? 8 : 1);
@@ -65,12 +65,12 @@ function BrowsePage() {
     queryKey: [
       "browse",
       yearBrowse ? "year" : selected?.transportUrl,
-      selected?.type,
+      type,
       yearBrowse ? "year" : selected?.id,
       yearBrowse ? fetchYears.join(",") : filters.genre,
       pageCount,
     ],
-    enabled: Boolean(selected) || yearBrowse,
+    enabled: yearBrowse || Boolean(selected),
     queryFn: () => {
       if (yearBrowse) return fetchCinemetaYearPages(type, fetchYears, pageCount);
       return fetchCatalogPages(
@@ -82,6 +82,7 @@ function BrowsePage() {
       );
     },
     staleTime: 120_000,
+    retry: 1,
   });
 
   const fallback = useQuery({
@@ -117,7 +118,7 @@ function BrowsePage() {
           <p className="text-sm text-muted">Browse</p>
           <h1 className="text-3xl font-semibold">{TYPE_LABEL[type] ?? type}</h1>
         </div>
-        {catalogs.length > 1 ? (
+        {catalogs.length > 1 && !yearBrowse ? (
           <select
             value={selected ? `${selected.transportUrl}:${selected.id}` : ""}
             onChange={(e) => {
@@ -157,7 +158,11 @@ function BrowsePage() {
           <PosterGrid
             items={items}
             loading={loading}
-            empty="Nothing matches those filters. Loosen year, rating, or category."
+            empty={
+              query.isError
+                ? "Couldn't load titles for that filter. Try again in a moment."
+                : "Nothing matches those filters. Loosen year, rating, or category."
+            }
           />
           {canLoadMore && !loading ? (
             <div className="mt-8 flex justify-center">

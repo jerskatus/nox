@@ -12,7 +12,7 @@ import type {
   Stream,
   Subtitle,
 } from "./types";
-import { addonHasResource, CINEMETA_URL, resourceUrl } from "./urls";
+import { addonHasResource, CINEMETA_URL, CINEMETA_YEAR_URL, resourceUrl } from "./urls";
 
 export async function loadJson(url: string): Promise<unknown> {
   if (url.startsWith("local://nox-open/")) return handleLocalOpen(url);
@@ -60,7 +60,7 @@ export async function fetchCatalog(
 }
 
 export const CATALOG_PAGE_SIZE = 50;
-const CATALOG_BATCH = 24;
+const CATALOG_BATCH = 32;
 
 async function loadCatalogUrls(urls: string[]): Promise<MetaPreview[]> {
   const seen = new Set<string>();
@@ -107,18 +107,23 @@ export async function fetchCinemetaYearPages(
   pagesPerYear: number,
 ): Promise<MetaPreview[]> {
   const pages = Math.max(1, pagesPerYear);
-  const urls: string[] = [];
-  for (const year of years) {
-    for (let i = 0; i < pages; i++) {
-      urls.push(
-        resourceUrl(CINEMETA_URL, "catalog", type, "year", {
-          genre: String(year),
-          skip: i * CATALOG_PAGE_SIZE || undefined,
-        }),
-      );
+  const urlsFor = (transport: string) => {
+    const urls: string[] = [];
+    for (const year of years) {
+      for (let i = 0; i < pages; i++) {
+        urls.push(
+          resourceUrl(transport, "catalog", type, "year", {
+            genre: String(year),
+            skip: i * CATALOG_PAGE_SIZE || undefined,
+          }),
+        );
+      }
     }
-  }
-  return loadCatalogUrls(urls);
+    return urls;
+  };
+  const items = await loadCatalogUrls(urlsFor(CINEMETA_YEAR_URL));
+  if (items.length > 0) return items;
+  return loadCatalogUrls(urlsFor(CINEMETA_URL));
 }
 
 export async function fetchMeta(

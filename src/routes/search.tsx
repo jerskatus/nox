@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Sparkles, Search as SearchIcon, Type } from "lucide-react";
+import { Sparkles, Search as SearchIcon, Type, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { FilterBar } from "@/components/catalog/filter-bar";
 import { PosterGrid } from "@/components/catalog/poster-card";
@@ -15,6 +15,13 @@ import {
   SERIES_GENRES,
   type CatalogFilters,
 } from "@/lib/catalog-filter";
+import {
+  clearSearchRecents,
+  pushSearchRecent,
+  readSearchRecents,
+  removeSearchRecent,
+  type SearchRecent,
+} from "@/lib/search-recents";
 import { ASK_PROMPTS, runSearch } from "@/lib/stremio/ai-search";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -43,6 +50,7 @@ function SearchPage() {
   const [draft, setDraft] = useState(q);
   const [storedMode, setStoredMode] = useState<SearchMode>(() => useSettingsStore.getState().searchMode);
   const [keysOpen, setKeysOpen] = useState(false);
+  const [recents, setRecents] = useState<SearchRecent[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const typed = useRef(false);
   const addons = useEnabledAddons();
@@ -52,6 +60,7 @@ function SearchPage() {
     const stored = window.localStorage.getItem(MODE_KEY);
     if (stored === "title" || stored === "smart") setStoredMode(stored);
     else setStoredMode(useSettingsStore.getState().searchMode);
+    setRecents(readSearchRecents());
   }, []);
 
   useEffect(() => {
@@ -109,6 +118,13 @@ function SearchPage() {
     queryFn: () => runSearch(q.trim(), addons, mode),
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    if (!query.isSuccess) return;
+    const term = q.trim();
+    if (term.length < 2) return;
+    setRecents(pushSearchRecent({ q: term, mode }));
+  }, [query.isSuccess, q, mode]);
 
   const intent = query.data?.intent;
   const pool = query.data?.items ?? [];
@@ -186,6 +202,44 @@ function SearchPage() {
 
       {!q.trim() ? (
         <div className="mx-auto max-w-2xl">
+          {recents.length > 0 ? (
+            <div className="mb-8">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold tracking-wide text-subtle uppercase">Recent</p>
+                <button
+                  type="button"
+                  className="min-h-11 px-2 text-xs text-muted touch-manipulation hover:text-fg"
+                  onClick={() => setRecents(clearSearchRecents())}
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recents.map((item) => (
+                  <span
+                    key={`${item.mode}:${item.q}`}
+                    className="inline-flex max-w-full items-center rounded-full border border-border bg-elevated"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => go(item.q, item.mode)}
+                      className="max-w-[16rem] truncate px-3 py-2 text-sm text-fg touch-manipulation hover:text-fg"
+                    >
+                      {item.q}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${item.q}`}
+                      className="grid size-11 place-items-center text-muted touch-manipulation hover:text-fg"
+                      onClick={() => setRecents(removeSearchRecent(item.q))}
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <p className="mb-4 text-center text-sm text-muted">
             {mode === "smart"
               ? "Ask in plain English. Nox reads the request, then searches every installed catalog."

@@ -16,6 +16,7 @@ import { Route as ListRouteImport } from './routes/list'
 import { Route as OptionsRouteImport } from './routes/options'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ApiMediaRouteImport } from './routes/api/media'
+import { Route as ApiVersionRouteImport } from './routes/api/version'
 import { Route as BrowseTypeRouteImport } from './routes/browse.$type'
 import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
 import { Route as CollectionsIdRouteImport } from './routes/collections.$id'
@@ -58,6 +59,11 @@ const ApiMediaRoute = ApiMediaRouteImport.update({
   path: '/api/media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVersionRoute = ApiVersionRouteImport.update({
+  id: '/api/version',
+  path: '/api/version',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseTypeRoute = BrowseTypeRouteImport.update({
   id: '/browse/$type',
   path: '/browse/$type',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/options': typeof OptionsRoute
   '/search': typeof SearchRoute
   '/api/media': typeof ApiMediaRoute
+  '/api/version': typeof ApiVersionRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/options': typeof OptionsRoute
   '/search': typeof SearchRoute
   '/api/media': typeof ApiMediaRoute
+  '/api/version': typeof ApiVersionRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/options': typeof OptionsRoute
   '/search': typeof SearchRoute
   '/api/media': typeof ApiMediaRoute
+  '/api/version': typeof ApiVersionRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/options'
     | '/search'
     | '/api/media'
+    | '/api/version'
     | '/browse/$type'
     | '/collections/$id'
     | '/provider/$id'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/options'
     | '/search'
     | '/api/media'
+    | '/api/version'
     | '/browse/$type'
     | '/collections/$id'
     | '/provider/$id'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/options'
     | '/search'
     | '/api/media'
+    | '/api/version'
     | '/browse/$type'
     | '/collections/$id'
     | '/provider/$id'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   OptionsRoute: typeof OptionsRoute
   SearchRoute: typeof SearchRoute
   ApiMediaRoute: typeof ApiMediaRoute
+  ApiVersionRoute: typeof ApiVersionRoute
   BrowseTypeRoute: typeof BrowseTypeRoute
   ProviderIdRoute: typeof ProviderIdRoute
   TitleTypeIdRoute: typeof TitleTypeIdRoute
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       path: '/api/media'
       fullPath: '/api/media'
       preLoaderRoute: typeof ApiMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/version': {
+      id: '/api/version'
+      path: '/api/version'
+      fullPath: '/api/version'
+      preLoaderRoute: typeof ApiVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/browse/$type': {
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   OptionsRoute: OptionsRoute,
   SearchRoute: SearchRoute,
   ApiMediaRoute: ApiMediaRoute,
+  ApiVersionRoute: ApiVersionRoute,
   BrowseTypeRoute: BrowseTypeRoute,
   ProviderIdRoute: ProviderIdRoute,
   TitleTypeIdRoute: TitleTypeIdRoute,

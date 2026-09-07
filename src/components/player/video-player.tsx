@@ -90,8 +90,8 @@ export function VideoPlayer({
   const graphRef = useRef<{ ctx: AudioContext; analyser: AnalyserNode } | null>(null);
   const syncing = useRef(false);
   const [playing, setPlaying] = useState(true);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
+  const volume = useSettingsStore((s) => s.volume);
+  const muted = useSettingsStore((s) => s.muted);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fs, setFs] = useState(false);
@@ -231,6 +231,9 @@ export function VideoPlayer({
     }
 
     const onReady = () => {
+      const settings = useSettingsStore.getState();
+      video.volume = settings.volume;
+      video.muted = settings.muted;
       if (!started.current && startAtRef.current > 1) {
         video.currentTime = startAtRef.current;
         started.current = true;
@@ -319,7 +322,7 @@ export function VideoPlayer({
           break;
         case "m":
           event.preventDefault();
-          setMuted((v) => !v);
+          useSettingsStore.getState().setMuted(!useSettingsStore.getState().muted);
           break;
         case "Escape":
           if (captionsOpen || syncState !== "idle") {
@@ -488,6 +491,7 @@ export function VideoPlayer({
         poster={poster}
         playsInline
         autoPlay
+        muted={muted}
         onPlay={() => {
           setPlaying(true);
           setWaiting(false);
@@ -881,7 +885,7 @@ export function VideoPlayer({
             size="icon-sm"
             className="bg-transparent"
             onClick={() => {
-              setMuted((v) => !v);
+              useSettingsStore.getState().setMuted(!muted);
               bumpControls();
             }}
             aria-label={muted ? "Unmute" : "Mute"}
@@ -898,8 +902,7 @@ export function VideoPlayer({
             className="hidden h-2 w-24 cursor-pointer appearance-none bg-fg/20 accent-fg sm:block"
             onChange={(e) => {
               const v = Number(e.target.value);
-              setVolume(v);
-              setMuted(v === 0);
+              useSettingsStore.getState().setVolume(v);
               bumpControls();
             }}
           />

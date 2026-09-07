@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Play } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { useState } from "react";
-import { progressRatio, type ProgressItem } from "@/stores/library";
+import { progressRatio, useLibraryStore, type ProgressItem } from "@/stores/library";
 import { encodeId } from "@/lib/utils";
 
 function episodeLabel(item: ProgressItem) {
@@ -33,43 +33,57 @@ function ContinueCard({ item }: { item: ProgressItem }) {
   const src = item.background || item.poster;
 
   return (
-    <Link
-      to="/watch/$type/$id"
-      params={{ type: item.type, id: encodeId(item.id) }}
-      search={{ video: item.videoId === item.id ? undefined : item.videoId, auto: "1" }}
-      className="group relative w-56 shrink-0 overflow-hidden rounded-md bg-elevated touch-manipulation sm:w-72 lg:w-80"
-    >
-      <div className="aspect-wide">
-        {src && !failed ? (
-          <img
-            src={src}
-            alt=""
-            className="size-full object-cover transition-transform duration-300 ease-out fine-hover:group-hover:scale-105"
-            loading="lazy"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <div className="flex size-full items-end bg-elevated p-3">
-            <span className="line-clamp-2 text-sm font-semibold">{item.name}</span>
-          </div>
-        )}
-      </div>
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-bg via-bg/20 to-transparent" />
-      <span className="absolute top-2 left-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-        Continue
-      </span>
-      <div className="absolute inset-0 grid place-items-center opacity-100 transition-opacity fine-hover:opacity-0 fine-hover:group-hover:opacity-100">
-        <span className="grid size-12 place-items-center rounded-full bg-fg text-bg shadow-lg">
-          <Play className="size-5 fill-current" />
-        </span>
-      </div>
-      <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
-        <p className="truncate text-sm font-semibold text-fg">{item.name}</p>
-        {episode ? <p className="truncate text-[11px] text-muted">{episode}</p> : null}
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-fg/20">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(ratio * 100)}%` }} />
+    <div className="group relative w-56 shrink-0 overflow-hidden rounded-md bg-elevated sm:w-72 lg:w-80">
+      <Link
+        to="/watch/$type/$id"
+        params={{ type: item.type, id: encodeId(item.id) }}
+        search={{ video: item.videoId === item.id ? undefined : item.videoId, auto: "1" }}
+        className="block touch-manipulation"
+      >
+        <div className="aspect-wide">
+          {src && !failed ? (
+            <img
+              src={src}
+              alt=""
+              className="size-full object-cover transition-transform duration-300 ease-out fine-hover:group-hover:scale-105"
+              loading="lazy"
+              onError={() => setFailed(true)}
+            />
+          ) : (
+            <div className="flex size-full items-end bg-elevated p-3">
+              <span className="line-clamp-2 text-sm font-semibold">{item.name}</span>
+            </div>
+          )}
         </div>
-      </div>
-    </Link>
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-bg via-bg/20 to-transparent" />
+        <span className="absolute top-2 left-2 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-fg">
+          Continue
+        </span>
+        <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-100 transition-opacity fine-hover:opacity-0 fine-hover:group-hover:opacity-100">
+          <span className="grid size-12 place-items-center rounded-full bg-fg text-bg shadow-lg">
+            <Play className="size-5 fill-current" />
+          </span>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
+          <p className="truncate text-sm font-semibold text-fg">{item.name}</p>
+          {episode ? <p className="truncate text-2xs text-muted">{episode}</p> : null}
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-fg/20">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(ratio * 100)}%` }} />
+          </div>
+        </div>
+      </Link>
+      <button
+        type="button"
+        aria-label={`Remove ${item.name} from Continue`}
+        className="absolute top-1.5 right-1.5 z-20 grid size-11 place-items-center rounded-full bg-bg/80 text-fg shadow-md touch-manipulation hover:bg-bg"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          useLibraryStore.getState().clearProgress(item.id);
+        }}
+      >
+        <X className="size-4" />
+      </button>
+    </div>
   );
 }
