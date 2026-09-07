@@ -34,7 +34,7 @@ function SearchPage() {
       const next = draft.trim();
       if (next === q.trim()) return;
       void navigate({ to: "/search", search: { q: next }, replace: true });
-    }, 380);
+    }, 700);
     return () => window.clearTimeout(handle);
   }, [draft, q, navigate]);
 

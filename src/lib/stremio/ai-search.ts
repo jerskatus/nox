@@ -1,4 +1,5 @@
 import type { InstalledAddon, MetaPreview } from "./types";
+import { interpretAsk, type AskTitle } from "./ask";
 import { fetchCatalog, loadJsonMany } from "./client";
 import { catalogsWithSearch, CINEMETA_URL, resourceUrl } from "./urls";
 
@@ -93,6 +94,30 @@ const SIMILAR: Record<string, string[]> = {
   spirited: ["Howl's Moving Castle", "Princess Mononoke", "My Neighbor Totoro", "Your Name"],
   "spirited away": ["Howl's Moving Castle", "Princess Mononoke", "Nausicaä", "Your Name"],
 };
+
+const TROPES: { keys: string[]; titles: string[]; chips: string[] }[] = [
+  {
+    keys: ["road trip", "roadtrip", "road-trip", "road trip", "on a trip", "cross country", "cross-country"],
+    titles: [
+      "Road Trip",
+      "Thelma & Louise",
+      "Dumb and Dumber",
+      "Little Miss Sunshine",
+      "Superbad",
+      "Harold & Kumar Go to White Castle",
+      "EuroTrip",
+      "Due Date",
+      "Planes, Trains and Automobiles",
+      "National Lampoon's Vacation",
+      "Easy Rider",
+      "Sideways",
+      "Almost Famous",
+      "Stand by Me",
+      "We're the Millers",
+    ],
+    chips: ["road trip", "comedy"],
+  },
+];
 
 export const ASK_PROMPTS = [
   "Feel-good 90s romcoms",
@@ -219,6 +244,26 @@ export async function smartSearch(query: string, addons: InstalledAddon[]): Prom
   items: RankedTitle[];
 }> {
   const intent = parseIntent(query);
+
+  if (intent.ask) {
+    const grok = await interpretAsk({ data: { query } });
+    const wanted: AskTitle[] = grok.ok
+      ? grok.titles
+      : tropeTitles(intent);
+    if (grok.ok) {
+      if (grok.type) intent.type = grok.type;
+      intent.chips = unique([...grok.chips, ...intent.chips]).slice(0, 8);
+    } else if (wanted.length) {
+      intent.chips = unique(["road trip", ...intent.chips]);
+    }
+    if (wanted.length) {
+      const resolved = await resolveNamedTitles(wanted, intent);
+      if (resolved.length > 0) return { intent, items: resolved };
+    }
+    // Plot queries must not fall through to raw keyword search (that is how
+    // "best friends / road trip" became Friends + Going in Style).
+    if (intent.ask && !intent.like) return { intent, items: [] };
+  }
   const catalogs = catalogsWithSearch(addons)
     .sort((a, b) => Number(b.addonName === "Cinemeta") - Number(a.addonName === "Cinemeta"))
     .slice(0, 6);
@@ -447,4 +492,81 @@ function unique(items: string[]) {
     out.push(key);
   }
   return out;
+}
+
+function tropeTitles(intent: SearchIntent): AskTitle[] {
+  const q = intent.raw.toLowerCase();
+  const out: AskTitle[] = [];
+  for (const trope of TROPES) {
+    if (!trope.keys.some((key) => q.includes(key))) continue;
+    intent.chips = unique([...trope.chips, ...intent.chips]);
+    for (const name of trope.titles) {
+      out.push({
+        name,
+        type: intent.type ?? "movie",
+        why: trope.chips[0] ?? "match",
+      });
+    }
+  }
+  return out.slice(0, 14);
+}
+
+async function resolveNamedTitles(wanted: AskTitle[], intent: SearchIntent): Promise<RankedTitle[]> {
+  const types = intent.type ? [intent.type] : ["movie", "series"];
+  const urls = wanted.flatMap((title) =>
+    types
+      .filter((type) => !title.type || title.type === type || types.length === 1)
+      .slice(0, 1)
+      .map((type) => resourceUrl(CINEMETA_URL, "catalog", type, "top", { search: title.name })),
+  );
+  const results = urls.length ? await loadJsonMany(urls.slice(0, 24)) : [];
+  const ranked: RankedTitle[] = [];
+  const seen = new Set<string>();
+
+  wanted.forEach((want, index) => {
+    const needle = want.name.toLowerCase();
+    const year = want.year;
+    const pool: MetaPreview[] = [];
+    for (const result of results) {
+      if (!result.ok) continue;
+      const metas = ((result.data as { metas?: MetaPreview[] }).metas ?? []) as MetaPreview[];
+      for (const meta of metas) pool.push(meta);
+    }
+    const match = pickNamed(pool, needle, year);
+    if (!match) return;
+    const key = `${match.type}:${match.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    ranked.push({
+      ...match,
+      score: 1000 - index,
+      why: want.why ? [want.why] : [],
+    });
+  });
+
+  return ranked;
+}
+
+function pickNamed(pool: MetaPreview[], needle: string, year?: number) {
+  const compact = needle.replace(/[^a-z0-9]+/g, " ").trim();
+  const scored = pool
+    .map((item) => {
+      const name = item.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      let score = 0;
+      if (name === compact) score += 100;
+      else if (name.startsWith(compact)) score += 70;
+      else if (compact.startsWith(name) && name.length > 4) score += 50;
+      else if (name.includes(compact) && Math.abs(name.length - compact.length) < 12) score += 30;
+      else return null;
+      const y = itemYear(item);
+      if (year && y) {
+        if (y === year) score += 20;
+        else if (Math.abs(y - year) <= 1) score += 8;
+        else if (Math.abs(y - year) > 8) score -= 25;
+      }
+      return { item, score };
+    })
+    .filter((row): row is { item: MetaPreview; score: number } => Boolean(row))
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.item;
 }
