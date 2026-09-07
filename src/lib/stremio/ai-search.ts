@@ -45,22 +45,34 @@ const GENRES = [
 ] as const;
 
 const MOODS: { keys: string[]; genres: string[]; label: string }[] = [
-  { keys: ["feel-good", "feel good", "cozy", "comfort", "wholesome", "heartwarming", "uplifting"], genres: ["Comedy", "Family", "Romance"], label: "feel-good" },
-  { keys: ["dark", "grim", "bleak", "gritty"], genres: ["Drama", "Thriller", "Crime"], label: "dark" },
-  { keys: ["mind-bending", "mind bending", "twisty", "cerebral", "trippy"], genres: ["Mystery", "Sci-Fi", "Thriller"], label: "mind-bending" },
-  { keys: ["scary", "creepy", "spooky", "horror"], genres: ["Horror"], label: "scary" },
-  { keys: ["romcom", "rom-com", "romantic comedy"], genres: ["Romance", "Comedy"], label: "rom-com" },
-  { keys: ["heist", "caper"], genres: ["Crime", "Action"], label: "heist" },
-  { keys: ["space", "astronaut", "galaxy"], genres: ["Sci-Fi", "Adventure"], label: "space" },
-  { keys: ["time travel", "time-travel"], genres: ["Sci-Fi", "Adventure"], label: "time travel" },
-  { keys: ["war", "ww2", "wwii"], genres: ["War", "History"], label: "war" },
-  { keys: ["true crime"], genres: ["Crime", "Documentary"], label: "true crime" },
+  { keys: ["feel-good", "feel good", "cozy", "comfort", "wholesome", "heartwarming", "uplifting", "happy", "cheerful"], genres: ["Comedy", "Family", "Romance"], label: "feel-good" },
+  { keys: ["dark", "grim", "bleak", "gritty", "depressing", "heavy"], genres: ["Drama", "Thriller", "Crime"], label: "dark" },
+  { keys: ["mind-bending", "mind bending", "twisty", "cerebral", "trippy", "puzzle", "mindfuck"], genres: ["Mystery", "Sci-Fi", "Thriller"], label: "mind-bending" },
+  { keys: ["scary", "creepy", "spooky", "horror", "terrifying", "nightmare"], genres: ["Horror"], label: "scary" },
+  { keys: ["romcom", "rom-com", "romantic comedy", "romcoms"], genres: ["Romance", "Comedy"], label: "rom-com" },
+  { keys: ["heist", "caper", "bank robbery"], genres: ["Crime", "Action"], label: "heist" },
+  { keys: ["space", "astronaut", "galaxy", "outer space", "mars"], genres: ["Sci-Fi", "Adventure"], label: "space" },
+  { keys: ["time travel", "time-travel", "time loop", "timeloop"], genres: ["Sci-Fi", "Adventure"], label: "time travel" },
+  { keys: ["war", "ww2", "wwii", "vietnam", "battlefield"], genres: ["War", "History"], label: "war" },
+  { keys: ["true crime", "serial killer", "murder mystery"], genres: ["Crime", "Documentary"], label: "true crime" },
   { keys: ["anime"], genres: ["Animation"], label: "anime" },
-  { keys: ["kids", "family friendly", "for kids"], genres: ["Family", "Animation"], label: "family" },
-  { keys: ["superhero", "marvel", "dc"], genres: ["Action", "Adventure"], label: "superhero" },
+  { keys: ["kids", "family friendly", "for kids", "child friendly", "disney kids"], genres: ["Family", "Animation"], label: "family" },
+  { keys: ["superhero", "marvel", "dc", "comic book"], genres: ["Action", "Adventure"], label: "superhero" },
   { keys: ["rainy", "rainy-day", "rainy day"], genres: ["Drama", "Romance"], label: "rainy-day" },
-  { keys: ["christmas", "holiday", "xmas"], genres: ["Comedy", "Family", "Romance"], label: "holiday" },
-  { keys: ["coming of age", "coming-of-age"], genres: ["Drama"], label: "coming of age" },
+  { keys: ["christmas", "holiday", "xmas", "festive"], genres: ["Comedy", "Family", "Romance"], label: "holiday" },
+  { keys: ["coming of age", "coming-of-age", "teen movie", "high school"], genres: ["Drama"], label: "coming of age" },
+  { keys: ["funny", "hilarious", "goofy", "silly", "laugh"], genres: ["Comedy"], label: "funny" },
+  { keys: ["sad", "tearjerker", "cry", "heartbreaking", "tragic"], genres: ["Drama"], label: "tearjerker" },
+  { keys: ["slow burn", "slow-burn"], genres: ["Drama", "Romance"], label: "slow-burn" },
+  { keys: ["fast", "adrenaline", "action packed", "action-packed"], genres: ["Action"], label: "adrenaline" },
+  { keys: ["steamy", "sexy", "erotic", "spicy"], genres: ["Romance", "Drama"], label: "steamy" },
+  { keys: ["campy", "cheesy", "so-bad-it's-good"], genres: ["Comedy", "Horror"], label: "campy" },
+  { keys: ["epic", "sweeping"], genres: ["Adventure", "Drama"], label: "epic" },
+  { keys: ["quirky", "offbeat", "indie", "wes anderson"], genres: ["Comedy", "Drama"], label: "quirky" },
+  { keys: ["smart", "witty", "clever"], genres: ["Comedy", "Drama"], label: "witty" },
+  { keys: ["brutal", "violent", "gory", "bloody"], genres: ["Action", "Horror"], label: "brutal" },
+  { keys: ["cozy mystery", "cozy crime"], genres: ["Mystery", "Crime"], label: "cozy-mystery" },
+  { keys: ["found family", "found-family"], genres: ["Drama", "Adventure"], label: "found-family" },
 ];
 
 const STOP = new Set([
@@ -93,29 +105,310 @@ const SIMILAR: Record<string, string[]> = {
   "the godfather": ["Goodfellas", "Casino", "The Irishman", "Once Upon a Time in America"],
   spirited: ["Howl's Moving Castle", "Princess Mononoke", "My Neighbor Totoro", "Your Name"],
   "spirited away": ["Howl's Moving Castle", "Princess Mononoke", "Nausicaä", "Your Name"],
+  "pulp fiction": ["Reservoir Dogs", "Snatch", "Lock, Stock and Two Smoking Barrels", "Kill Bill"],
+  "fight club": ["American Psycho", "Nightcrawler", "Taxi Driver", "Joker"],
+  "the matrix": ["Dark City", "Equilibrium", "Inception", "Blade Runner"],
+  "mad max": ["John Wick", "The Raid", "Dredd", "Fury Road"],
+  "mad max fury road": ["Dredd", "John Wick", "District 9", "Children of Men"],
+  "get out": ["Us", "Nope", "The Invisible Man", "Sorry to Bother You"],
+  "hereditary": ["Midsommar", "The Witch", "Saint Maud", "The Babadook"],
+  "the shining": ["The Exorcist", "Rosemary's Baby", "The Others", "Session 9"],
+  "alien": ["The Thing", "Aliens", "Event Horizon", "Life"],
+  "jurassic park": ["Jaws", "Kong: Skull Island", "Super 8", "The Lost World"],
+  "jaws": ["Jurassic Park", "The Meg", "Deep Blue Sea", "Open Water"],
+  "forrest gump": ["The Green Mile", "Cast Away", "Big Fish", "The Curious Case of Benjamin Button"],
+  "the notebook": ["A Walk to Remember", "The Best of Me", "Dear John", "PS I Love You"],
+  "10 things i hate about you": ["Clueless", "She's All That", "Can't Hardly Wait", "Easy A"],
+  clueless: ["10 Things I Hate About You", "Mean Girls", "Easy A", "Legally Blonde"],
+  "mean girls": ["Clueless", "Easy A", "Heathers", "Jawbreaker"],
+  "notting hill": ["You've Got Mail", "Love Actually", "Four Weddings and a Funeral", "About Time"],
+  "love actually": ["Notting Hill", "The Holiday", "Bridget Jones's Diary", "About Time"],
+  "superbad": ["Knocked Up", "Pineapple Express", "Project X", "Booksmart"],
+  "the hangover": ["Superbad", "Due Date", "Project X", "We're the Millers"],
+  "bridesmaids": ["Trainwreck", "Rough Night", "The House Bunny", "Sisters"],
+  "legally blonde": ["Clueless", "13 Going on 30", "The Princess Diaries", "Miss Congeniality"],
+  "pride and prejudice": ["Sense and Sensibility", "Emma", "Little Women", "Bridgerton"],
+  bridgerton: ["Downton Abbey", "Outlander", "Sanditon", "The Buccaneers"],
+  "the crown": ["The Queen", "The King's Speech", "The Gilded Age", "Victoria"],
+  "sherlock": ["True Detective", "Luther", "Broadchurch", "Endeavour"],
+  "peaky blinders": ["Boardwalk Empire", "Gangs of London", "The Gentlemen", "Taboo"],
+  "the wire": ["The Shield", "Bosch", "We Own This City", "The Night Of"],
+  narcos: ["Sicario", "Traffic", "ZeroZeroZero", "El Chapo"],
+  "better call saul": ["Breaking Bad", "The Lincoln Lawyer", "The Night Of", "Michael Clayton"],
+  "black mirror": ["The Twilight Zone", "Westworld", "Devs", "Love, Death & Robots"],
+  westworld: ["Black Mirror", "Devs", "Ex Machina", "Humans"],
+  "the mandalorian": ["Andor", "The Book of Boba Fett", "Ahsoka", "Rogue One"],
+  "andor": ["The Mandalorian", "Rogue One", "Children of Men", "Sicario"],
+  "the witcher": ["Game of Thrones", "Shadow and Bone", "The Wheel of Time", "Vikings"],
+  "house of the dragon": ["Game of Thrones", "The Witcher", "Vikings", "The Last Kingdom"],
+  wednesday: ["The Addams Family", "Stranger Things", "Locke & Key", "Chilling Adventures of Sabrina"],
+  "squid game": ["Alice in Borderland", "The Platform", "Battle Royale", "Hunger Games"],
+  "the hunger games": ["Divergent", "Battle Royale", "The Maze Runner", "Squid Game"],
+  "harry potter": ["The Lord of the Rings", "Percy Jackson", "Fantastic Beasts", "The Golden Compass"],
+  "lord of the rings": ["The Hobbit", "Harry Potter", "Dune", "Willow"],
+  "the hobbit": ["The Lord of the Rings", "Willow", "Eragon", "Narnia"],
+  "star wars": ["Dune", "Guardians of the Galaxy", "Serenity", "The Mandalorian"],
+  "guardians of the galaxy": ["Thor: Ragnarok", "The Suicide Squad", "Star Wars", "Galaxy Quest"],
+  "iron man": ["The Avengers", "Spider-Man", "Black Panther", "Doctor Strange"],
+  "spider-man": ["Iron Man", "The Amazing Spider-Man", "Into the Spider-Verse", "Superman"],
+  "batman": ["The Dark Knight", "Joker", "The Batman", "Watchmen"],
+  "the dark knight": ["Joker", "The Batman", "Zodiac", "Heat"],
+  joker: ["Taxi Driver", "The King of Comedy", "Nightcrawler", "The Dark Knight"],
+  "whiplash": ["Black Swan", "Birdman", "Sound of Metal", "Tick, Tick... Boom!"],
+  "la la": ["Whiplash", "The Greatest Showman", "Tick, Tick... Boom!"],
+  oldboy: ["I Saw the Devil", "Sympathy for Mr. Vengeance", "The Handmaiden", "Decision to Leave"],
+  "train to busan": ["Peninsula", "World War Z", "28 Days Later", "#Alive"],
+  "your name": ["Weathering with You", "Suzume", "A Silent Voice", "Garden of Words"],
+  "attack on titan": ["Vinland Saga", "Demon Slayer", "Jujutsu Kaisen", "Tokyo Ghoul"],
+  "demon slayer": ["Jujutsu Kaisen", "Attack on Titan", "My Hero Academia", "Chainsaw Man"],
+  "studio ghibli": ["Spirited Away", "Howl's Moving Castle", "Princess Mononoke", "Kiki's Delivery Service"],
+  "the menu": ["The Bear", "Ready or Not", "Triangle of Sadness", "Fresh"],
+  "knives out": ["Glass Onion", "Clue", "Murder on the Orient Express", "See How They Run"],
+  "gone girl": ["The Girl on the Train", "Prisoners", "Zodiac", "Sharp Objects"],
+  "no country": ["There Will Be Blood", "Hell or High Water", "Wind River", "Sicario"],
+  sicario: ["Sicario", "Zero Dark Thirty", "The Town", "Heat"],
+  heat: ["Heat", "The Town", "Den of Thieves", "Collateral"],
+  "ocean's": ["Ocean's Eleven", "The Italian Job", "Logan Lucky", "Now You See Me"],
+  "now you see me": ["Ocean's Eleven", "The Prestige", "Focus", "Trap"],
+  "mission impossible": ["James Bond", "The Bourne Identity", "Jack Reacher", "Atomic Blonde"],
+  bourne: ["The Bourne Identity", "Mission: Impossible", "Jack Ryan", "Atomic Blonde"],
+  "james bond": ["Mission: Impossible", "The Bourne Identity", "Kingsman", "Atomic Blonde"],
+  kingsman: ["Kick-Ass", "The Gentlemen", "Matthew Vaughn", "Scott Pilgrim"],
+  "die hard": ["Speed", "Olympus Has Fallen", "The Raid", "John Wick"],
+  "top gun": ["Days of Thunder", "Ford v Ferrari", "Rush", "Need for Speed"],
+  "fast and furious": ["Need for Speed", "Baby Driver", "Drive", "Gone in 60 Seconds"],
+  drive: ["Nightcrawler", "Baby Driver", "Only God Forgives", "The Place Beyond the Pines"],
+  "baby driver": ["Drive", "Baby Driver", "Edgar Wright", "Scott Pilgrim vs. the World"],
+  "shaun of the dead": ["Hot Fuzz", "Zombieland", "What We Do in the Shadows", "Tucker and Dale vs Evil"],
+  "hot fuzz": ["Shaun of the Dead", "The World's End", "21 Jump Street", "The Nice Guys"],
+  "what we do in the shadows": ["Shaun of the Dead", "Wellington Paranormal", "Our Flag Means Death", "The Office"],
+  "parks and rec": ["The Office", "Brooklyn Nine-Nine", "Superstore", "Abbott Elementary"],
+  "brooklyn nine-nine": ["The Office", "Parks and Recreation", "Psych", "Chuck"],
+  community: ["The Good Place", "Brooklyn Nine-Nine", "Arrested Development", "30 Rock"],
+  "the good place": ["Community", "The Good Place", "Upload", "Russian Doll"],
+  "arrested development": ["It's Always Sunny in Philadelphia", "30 Rock", "Veep", "Community"],
+  "always sunny": ["Arrested Development", "Curb Your Enthusiasm", "What We Do in the Shadows", "Trailer Park Boys"],
+  "curb your enthusiasm": ["Seinfeld", "Veep", "The Rehearsal", "It's Always Sunny in Philadelphia"],
+  seinfeld: ["Curb Your Enthusiasm", "The Office", "Frasier", "30 Rock"],
+  friends: ["How I Met Your Mother", "New Girl", "The Big Bang Theory", "Happy Endings"],
+  "how i met your mother": ["Friends", "New Girl", "Happy Endings", "The Big Bang Theory"],
+  "new girl": ["Friends", "Happy Endings", "Brooklyn Nine-Nine", "Superstore"],
+  "big bang": ["Friends", "How I Met Your Mother", "The IT Crowd", "Silicon Valley"],
+  "silicon valley": ["The IT Crowd", "Halt and Catch Fire", "Superstore", "Mythic Quest"],
+  "mad men": ["Succession", "The Crown", "Halt and Catch Fire", "The Americans"],
+  "the americans": ["Slow Horses", "The Night Manager", "Homeland", "The Spy"],
+  "slow horses": ["The Americans", "Tinker Tailor Soldier Spy", "The Night Manager", "Jack Ryan"],
+  "mindhunter": ["True Detective", "Zodiac", "Manhunt", "The Night Of"],
+  "fargo": ["No Country for Old Men", "Fargo", "Twin Peaks", "True Detective"],
+  "twin peaks": ["The X-Files", "True Detective", "Dark", "The Leftovers"],
+  "the leftovers": ["The OA", "Station Eleven", "Dark", "The Returned"],
+  dark: ["The OA", "1899", "Stranger Things", "The Leftovers"],
+  "mr robot": ["Fight Club", "Mr. Robot", "Devs", "Black Mirror"],
+  "the walking dead": ["The Last of Us", "28 Days Later", "Train to Busan", "Fear the Walking Dead"],
+  "yellowstone": ["1883", "Mayor of Kingstown", "Longmire", "Justified"],
+  justified: ["Longmire", "Justified", "Raylan", "No Country for Old Men"],
+  "ozark": ["Breaking Bad", "Ozark", "Bloodline", "Animal Kingdom"],
+  "animal kingdom": ["Ozark", "Animal Kingdom", "Snowfall", "Mayans M.C."],
+  "euphoria": ["Skins", "Thirteen", "The Idol", "We Are Who We Are"],
+  skins: ["Euphoria", "Skins", "The End of the F***ing World", "My Mad Fat Diary"],
+  "normal people": ["One Day", "Conversations with Friends", "Fleabag", "The Worst Person in the World"],
+  fleabag: ["Catastrophe", "I May Destroy You", "The Worst Person in the World", "After Life"],
+  "ted lasso": ["Shrinking", "The Good Place", "Abbott Elementary", "Friday Night Lights"],
+  "friday night lights": ["Ted Lasso", "Coach Carter", "Remember the Titans", "All American"],
+  "the white lotus": ["The Menu", "Triangle of Sadness", "The Resort", "Nine Perfect Strangers"],
 };
 
-const TROPES: { keys: string[]; titles: string[]; chips: string[] }[] = [
+const TROPES: { keys: string[]; titles: string[]; chips: string[]; kind?: "movie" | "series" }[] = [
   {
-    keys: ["road trip", "roadtrip", "road-trip", "road trip", "on a trip", "cross country", "cross-country"],
-    titles: [
-      "Road Trip",
-      "Thelma & Louise",
-      "Dumb and Dumber",
-      "Little Miss Sunshine",
-      "Superbad",
-      "Harold & Kumar Go to White Castle",
-      "EuroTrip",
-      "Due Date",
-      "Planes, Trains and Automobiles",
-      "National Lampoon's Vacation",
-      "Easy Rider",
-      "Sideways",
-      "Almost Famous",
-      "Stand by Me",
-      "We're the Millers",
-    ],
-    chips: ["road trip", "comedy"],
+    keys: ["road trip", "roadtrip", "road-trip", "on a trip", "cross country", "cross-country"],
+    titles: ["Road Trip", "Thelma & Louise", "Dumb and Dumber", "Little Miss Sunshine", "Superbad", "Harold & Kumar Go to White Castle", "EuroTrip", "Due Date", "Planes, Trains and Automobiles", "National Lampoon's Vacation", "Easy Rider", "Sideways", "Almost Famous", "Stand by Me", "We're the Millers"],
+    chips: ["road trip"],
+  },
+  {
+    keys: ["heist", "caper", "bank job", "casino robbery", "steal the"],
+    titles: ["Ocean's Eleven", "The Italian Job", "Heat", "Inside Man", "Logan Lucky", "Now You See Me", "The Town", "Den of Thieves", "Baby Driver", "Widows"],
+    chips: ["heist"],
+  },
+  {
+    keys: ["time loop", "same day over", "repeating day", "stuck in a loop"],
+    titles: ["Groundhog Day", "Palm Springs", "Edge of Tomorrow", "Source Code", "Happy Death Day", "Russian Doll", "The Map of Tiny Perfect Things", "ARQ"],
+    chips: ["time loop"],
+  },
+  {
+    keys: ["time travel"],
+    titles: ["Back to the Future", "Looper", "12 Monkeys", "Primer", "About Time", "The Time Traveler's Wife", "Arrival", "Interstellar"],
+    chips: ["time travel"],
+  },
+  {
+    keys: ["buddy cop", "buddy cops", "cop duo"],
+    titles: ["Lethal Weapon", "Bad Boys", "Rush Hour", "21 Jump Street", "The Nice Guys", "Hot Fuzz", "The Other Guys", "Kiss Kiss Bang Bang"],
+    chips: ["buddy cop"],
+  },
+  {
+    keys: ["workplace comedy", "office comedy", "job comedy"],
+    titles: ["The Office", "Parks and Recreation", "Superstore", "Abbott Elementary", "Industry", "Severance", "The Bear"],
+    chips: ["workplace"],
+    kind: "series",
+  },
+  {
+    keys: ["found family", "found-family", "makeshift family"],
+    titles: ["Guardians of the Galaxy", "The Goonies", "Lilo & Stitch", "The Umbrella Academy", "Stranger Things", "The Mandalorian", "Everything Everywhere All at Once"],
+    chips: ["found family"],
+  },
+  {
+    keys: ["enemies to lovers", "hate each other then", "rivals in love"],
+    titles: ["10 Things I Hate About You", "Pride & Prejudice", "When Harry Met Sally", "The Proposal", "How to Lose a Guy in 10 Days", "You've Got Mail", "To All the Boys I've Loved Before"],
+    chips: ["enemies to lovers", "rom-com"],
+  },
+  {
+    keys: ["fake dating", "fake relationship", "pretend to date", "contract relationship"],
+    titles: ["The Proposal", "To All the Boys I've Loved Before", "Can't Buy Me Love", "The Wedding Date", "Set It Up", "What's Your Number?"],
+    chips: ["fake dating", "rom-com"],
+  },
+  {
+    keys: ["wedding", "bridesmaid", "bachelor party"],
+    titles: ["Bridesmaids", "The Hangover", "Wedding Crashers", "My Best Friend's Wedding", "27 Dresses", "Father of the Bride", "The Wedding Singer"],
+    chips: ["wedding"],
+  },
+  {
+    keys: ["high school", "teen movie", "teen comedy"],
+    titles: ["Mean Girls", "10 Things I Hate About You", "Clueless", "Superbad", "Easy A", "Booksmart", "Lady Bird", "The Breakfast Club"],
+    chips: ["high school"],
+  },
+  {
+    keys: ["coming of age", "growing up"],
+    titles: ["Lady Bird", "The Perks of Being a Wallflower", "Stand by Me", "Moonlight", "Boyhood", "Eighth Grade", "The Spectacular Now", "Call Me by Your Name"],
+    chips: ["coming of age"],
+  },
+  {
+    keys: ["survival", "stranded", "desert island", "wilderness"],
+    titles: ["Cast Away", "The Revenant", "127 Hours", "Into the Wild", "The Martian", "Life of Pi", "Alive", "The Grey"],
+    chips: ["survival"],
+  },
+  {
+    keys: ["apocalypse", "end of the world", "post-apocalyptic", "post apocalyptic"],
+    titles: ["Children of Men", "Mad Max: Fury Road", "The Road", "A Quiet Place", "28 Days Later", "Station Eleven", "The Last of Us", "Snowpiercer"],
+    chips: ["apocalypse"],
+  },
+  {
+    keys: ["zombie", "zombies", "undead"],
+    titles: ["28 Days Later", "Shaun of the Dead", "Zombieland", "Train to Busan", "World War Z", "Dawn of the Dead", "The Walking Dead"],
+    chips: ["zombies"],
+  },
+  {
+    keys: ["vampire", "vampires"],
+    titles: ["Let the Right One In", "What We Do in the Shadows", "Interview with the Vampire", "Only Lovers Left Alive", "The Lost Boys", "Twilight", "True Blood"],
+    chips: ["vampires"],
+  },
+  {
+    keys: ["serial killer", "murderer hunting"],
+    titles: ["Zodiac", "Se7en", "Mindhunter", "The Silence of the Lambs", "Memories of Murder", "No Country for Old Men", "The Night Of"],
+    chips: ["serial killer"],
+  },
+  {
+    keys: ["courtroom", "trial", "lawyer movie", "legal drama"],
+    titles: ["A Few Good Men", "To Kill a Mockingbird", "The Verdict", "Philadelphia", "Primal Fear", "The Lincoln Lawyer", "Better Call Saul"],
+    chips: ["courtroom"],
+  },
+  {
+    keys: ["spy", "espionage", "secret agent", "cia", "mi6"],
+    titles: ["Tinker Tailor Soldier Spy", "The Bourne Identity", "Casino Royale", "Mission: Impossible", "Atomic Blonde", "Slow Horses", "The Americans"],
+    chips: ["spy"],
+  },
+  {
+    keys: ["hitman", "assassin", "contract killer"],
+    titles: ["John Wick", "Léon: The Professional", "The Killer", "Mr. & Mrs. Smith", "Grosse Pointe Blank", "Atomic Blonde", "Nobody"],
+    chips: ["assassin"],
+  },
+  {
+    keys: ["sports", "underdog team", "underdog sports", "football movie", "basketball movie", "boxing"],
+    titles: ["Rocky", "Remember the Titans", "Friday Night Lights", "Moneyball", "Coach Carter", "The Blind Side", "Creed", "Rush"],
+    chips: ["sports"],
+  },
+  {
+    keys: ["chef", "restaurant", "cooking", "kitchen"],
+    titles: ["The Bear", "The Menu", "Chef", "Julie & Julia", "Burnt", "Boiling Point", "Ratatouille"],
+    chips: ["kitchen"],
+  },
+  {
+    keys: ["haunted house", "haunted", "ghost story", "ghosts"],
+    titles: ["The Conjuring", "The Others", "The Haunting", "Hereditary", "The Babadook", "His House", "Poltergeist"],
+    chips: ["haunted"],
+  },
+  {
+    keys: ["home invasion"],
+    titles: ["The Strangers", "Don't Breathe", "The Purge", "Funny Games", "Panic Room", "The Gift"],
+    chips: ["home invasion"],
+  },
+  {
+    keys: ["space", "astronaut", "on mars", "in space"],
+    titles: ["The Martian", "Gravity", "Interstellar", "Alien", "Moon", "First Man", "Apollo 13", "Ad Astra"],
+    chips: ["space"],
+  },
+  {
+    keys: ["robots", "ai", "artificial intelligence", "android"],
+    titles: ["Ex Machina", "Her", "The Terminator", "Blade Runner 2049", "A.I. Artificial Intelligence", "I, Robot", "The Creator"],
+    chips: ["AI"],
+  },
+  {
+    keys: ["musical", "singing", "song and dance"],
+    titles: ["La La Land", "Whiplash", "The Greatest Showman", "Tick, Tick... Boom!", "West Side Story", "Chicago", "Les Misérables"],
+    chips: ["musical"],
+  },
+  {
+    keys: ["christmas", "xmas", "holiday movie"],
+    titles: ["Love Actually", "The Holiday", "Home Alone", "Elf", "Die Hard", "It's a Wonderful Life", "The Santa Clause", "Klaus"],
+    chips: ["christmas"],
+  },
+  {
+    keys: ["heist crew", "one last job"],
+    titles: ["Heat", "The Town", "Logan Lucky", "Widows", "Ocean's Eleven"],
+    chips: ["one last job"],
+  },
+  {
+    keys: ["small town", "small-town"],
+    titles: ["Fargo", "Twin Peaks", "Stranger Things", "Sharp Objects", "Three Billboards Outside Ebbing, Missouri", "The Truman Show"],
+    chips: ["small town"],
+  },
+  {
+    keys: ["based on a true story", "true story", "based on true"],
+    titles: ["Spotlight", "The Social Network", "Catch Me If You Can", "The Wolf of Wall Street", "Ford v Ferrari", "Apollo 13", "Schindler's List"],
+    chips: ["true story"],
+  },
+  {
+    keys: ["con artist", "grifter", "scam", "catfish"],
+    titles: ["Catch Me If You Can", "The Sting", "American Hustle", "Focus", "The Talented Mr. Ripley", "Inventing Anna"],
+    chips: ["con"],
+  },
+  {
+    keys: ["revenge", "payback", "get even"],
+    titles: ["Kill Bill", "Oldboy", "John Wick", "The Count of Monte Cristo", "Gone Girl", "Promising Young Woman", "Taken"],
+    chips: ["revenge"],
+  },
+  {
+    keys: ["disaster", "earthquake", "tsunami", "volcano", "asteroid"],
+    titles: ["Twister", "The Day After Tomorrow", "Armageddon", "Deep Impact", "2012", "San Andreas", "Don't Look Up"],
+    chips: ["disaster"],
+  },
+  {
+    keys: ["pirates", "pirate"],
+    titles: ["Pirates of the Caribbean: The Curse of the Black Pearl", "Captain Phillips", "The Goonies", "Our Flag Means Death", "Treasure Island"],
+    chips: ["pirates"],
+  },
+  {
+    keys: ["western", "cowboys", "wild west"],
+    titles: ["The Good, the Bad and the Ugly", "True Grit", "No Country for Old Men", "The Hateful Eight", "3:10 to Yuma", "Tombstone", "Yellowstone"],
+    chips: ["western"],
+  },
+  {
+    keys: ["prison", "jailbreak", "escape from prison"],
+    titles: ["The Shawshank Redemption", "Escape from Alcatraz", "The Great Escape", "Cool Hand Luke", "Papillon", "Prison Break", "The Green Mile"],
+    chips: ["prison"],
+  },
+  {
+    keys: ["whodunit", "who done it", "murder mystery dinner", "detective mystery"],
+    titles: ["Knives Out", "Clue", "Murder on the Orient Express", "Gone Girl", "The Girl with the Dragon Tattoo", "Zodiac", "See How They Run"],
+    chips: ["whodunit"],
   },
 ];
 
@@ -126,6 +419,9 @@ export const ASK_PROMPTS = [
   "Korean thrillers",
   "Cozy rainy-day movies",
   "Heist movies from the 2000s",
+  "Best friends on a road trip",
+  "Enemies to lovers",
+  "Time-loop movies",
 ];
 
 export function parseIntent(raw: string): SearchIntent {
@@ -149,6 +445,9 @@ export function parseIntent(raw: string): SearchIntent {
   if (/\bsci[\s-]?fi\b|science fiction/.test(lower) && !genres.includes("Sci-Fi")) genres.push("Sci-Fi");
   if (/\bk-?drama|korean/.test(lower) && !genres.includes("Drama")) genres.push("Drama");
   if (/\bk-?drama\b/.test(lower)) type = type ?? "series";
+  if (/\b(funny|hilarious|comedy)\b/.test(lower) && !genres.includes("Comedy")) genres.push("Comedy");
+  if (/\b(sad|tearjerker|cry)\b/.test(lower) && !genres.includes("Drama")) genres.push("Drama");
+  if (/\b(scary|horror|creepy)\b/.test(lower) && !genres.includes("Horror")) genres.push("Horror");
 
   const moods: string[] = [];
   const romcom = /\b(romcom|rom-com|romcoms|romantic comedy|romantic comedies)\b/.test(lower);
@@ -328,8 +627,6 @@ export async function smartSearch(query: string, addons: InstalledAddon[]): Prom
     if (grok.ok) {
       if (grok.type) intent.type = grok.type;
       intent.chips = unique([...grok.chips, ...intent.chips]).slice(0, 8);
-    } else if (wanted.length) {
-      intent.chips = unique(["road trip", ...intent.chips]);
     }
     if (wanted.length) {
       const resolved = await resolveNamedTitles(wanted, intent);
@@ -575,15 +872,16 @@ function tropeTitles(intent: SearchIntent): AskTitle[] {
   for (const trope of TROPES) {
     if (!trope.keys.some((key) => q.includes(key))) continue;
     intent.chips = unique([...trope.chips, ...intent.chips]);
+    if (trope.kind) intent.type = intent.type ?? trope.kind;
     for (const name of trope.titles) {
       out.push({
         name,
-        type: intent.type ?? "movie",
+        type: trope.kind ?? intent.type ?? "movie",
         why: trope.chips[0] ?? "match",
       });
     }
   }
-  return out.slice(0, 14);
+  return out.slice(0, 16);
 }
 
 async function resolveNamedTitles(wanted: AskTitle[], intent: SearchIntent): Promise<RankedTitle[]> {
