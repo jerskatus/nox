@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddonsRouteImport } from './routes/addons'
+import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as ListRouteImport } from './routes/list'
 import { Route as OptionsRouteImport } from './routes/options'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as YoutubeRouteImport } from './routes/youtube'
 import { Route as ApiMediaRouteImport } from './routes/api/media'
 import { Route as BrowseTypeRouteImport } from './routes/browse.$type'
+import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
+import { Route as CollectionsIdRouteImport } from './routes/collections.$id'
 import { Route as ProviderIdRouteImport } from './routes/provider.$id'
 import { Route as TitleTypeIdRouteImport } from './routes/title.$type.$id'
 import { Route as WatchTypeIdRouteImport } from './routes/watch.$type.$id'
@@ -29,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AddonsRoute = AddonsRouteImport.update({
   id: '/addons',
   path: '/addons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsRoute = CollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListRoute = ListRouteImport.update({
@@ -61,6 +69,16 @@ const BrowseTypeRoute = BrowseTypeRouteImport.update({
   path: '/browse/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CollectionsRoute,
+} as any)
+const CollectionsIdRoute = CollectionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CollectionsRoute,
+} as any)
 const ProviderIdRoute = ProviderIdRouteImport.update({
   id: '/provider/$id',
   path: '/provider/$id',
@@ -80,13 +98,16 @@ const WatchTypeIdRoute = WatchTypeIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/addons': typeof AddonsRoute
+  '/collections': typeof CollectionsRouteWithChildren
   '/list': typeof ListRoute
   '/options': typeof OptionsRoute
   '/search': typeof SearchRoute
   '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
+  '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
+  '/collections/': typeof CollectionsIndexRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
 }
@@ -99,7 +120,9 @@ export interface FileRoutesByTo {
   '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
+  '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
+  '/collections': typeof CollectionsIndexRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
 }
@@ -107,13 +130,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/addons': typeof AddonsRoute
+  '/collections': typeof CollectionsRouteWithChildren
   '/list': typeof ListRoute
   '/options': typeof OptionsRoute
   '/search': typeof SearchRoute
   '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
+  '/collections/$id': typeof CollectionsIdRoute
   '/provider/$id': typeof ProviderIdRoute
+  '/collections/': typeof CollectionsIndexRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
 }
@@ -122,13 +148,16 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/addons'
+    | '/collections'
     | '/list'
     | '/options'
     | '/search'
     | '/youtube'
     | '/api/media'
     | '/browse/$type'
+    | '/collections/$id'
     | '/provider/$id'
+    | '/collections/'
     | '/title/$type/$id'
     | '/watch/$type/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -141,20 +170,25 @@ export interface FileRouteTypes {
     | '/youtube'
     | '/api/media'
     | '/browse/$type'
+    | '/collections/$id'
     | '/provider/$id'
+    | '/collections'
     | '/title/$type/$id'
     | '/watch/$type/$id'
   id:
     | '__root__'
     | '/'
     | '/addons'
+    | '/collections'
     | '/list'
     | '/options'
     | '/search'
     | '/youtube'
     | '/api/media'
     | '/browse/$type'
+    | '/collections/$id'
     | '/provider/$id'
+    | '/collections/'
     | '/title/$type/$id'
     | '/watch/$type/$id'
   fileRoutesById: FileRoutesById
@@ -162,6 +196,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AddonsRoute: typeof AddonsRoute
+  CollectionsRoute: typeof CollectionsRouteWithChildren
   ListRoute: typeof ListRoute
   OptionsRoute: typeof OptionsRoute
   SearchRoute: typeof SearchRoute
@@ -187,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/addons'
       fullPath: '/addons'
       preLoaderRoute: typeof AddonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections': {
+      id: '/collections'
+      path: '/collections'
+      fullPath: '/collections'
+      preLoaderRoute: typeof CollectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/list': {
@@ -231,6 +273,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/collections/': {
+      id: '/collections/'
+      path: '/'
+      fullPath: '/collections/'
+      preLoaderRoute: typeof CollectionsIndexRouteImport
+      parentRoute: typeof CollectionsRoute
+    }
+    '/collections/$id': {
+      id: '/collections/$id'
+      path: '/$id'
+      fullPath: '/collections/$id'
+      preLoaderRoute: typeof CollectionsIdRouteImport
+      parentRoute: typeof CollectionsRoute
+    }
     '/provider/$id': {
       id: '/provider/$id'
       path: '/provider/$id'
@@ -255,9 +311,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CollectionsRouteChildren {
+  CollectionsIdRoute: typeof CollectionsIdRoute
+  CollectionsIndexRoute: typeof CollectionsIndexRoute
+}
+
+const CollectionsRouteChildren: CollectionsRouteChildren = {
+  CollectionsIdRoute: CollectionsIdRoute,
+  CollectionsIndexRoute: CollectionsIndexRoute,
+}
+
+const CollectionsRouteWithChildren = CollectionsRoute._addFileChildren(
+  CollectionsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AddonsRoute: AddonsRoute,
+  CollectionsRoute: CollectionsRouteWithChildren,
   ListRoute: ListRoute,
   OptionsRoute: OptionsRoute,
   SearchRoute: SearchRoute,

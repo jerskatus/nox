@@ -1,6 +1,7 @@
-import { ArrowLeft, ExternalLink, Magnet, Play, Puzzle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Magnet, Play, Puzzle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { streamKind } from "@/lib/stremio/client";
+import { streamFlags } from "@/lib/stremio/stream-rank";
 import { streamDetailLines, streamQuality, streamSizeLabel } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -34,8 +35,9 @@ export function StreamPicker({
   onPick,
 }: Props) {
   const groups = groupStreams(streams);
-  const playable = streams.filter((s) => streamKind(s) === "http" || streamKind(s) === "hls" || streamKind(s) === "youtube").length;
+  const playable = streams.filter((s) => streamKind(s) === "http" || streamKind(s) === "hls" || streamKind(s) === "youtube");
   const preferred = preferredKey ? streams.find((s) => streamKey(s) === preferredKey) : null;
+  const best = playable.slice(0, 8);
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-bg">
@@ -74,8 +76,7 @@ export function StreamPicker({
         ) : (
           <>
             <p className="mb-4 text-sm text-muted">
-              {streams.length} source{streams.length === 1 ? "" : "s"} · {playable} play in the browser · {groups.length}{" "}
-              add-on{groups.length === 1 ? "" : "s"}
+              {streams.length} source{streams.length === 1 ? "" : "s"} · {playable.length} play in the browser · cached first
             </p>
             {preferred ? (
               <button
@@ -97,6 +98,25 @@ export function StreamPicker({
               </button>
             ) : null}
             <div className="flex flex-col gap-6 pb-16">
+              {best.length > 0 ? (
+                <section>
+                  <div className="mb-2 flex items-center gap-2 px-1">
+                    <Zap className="size-4 text-accent" />
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Best sources</h2>
+                  </div>
+                  <ul className="grid gap-2">
+                    {best.map((stream) => (
+                      <StreamChoice
+                        key={`best-${streamKey(stream)}`}
+                        stream={stream}
+                        active={selectedKey === streamKey(stream)}
+                        preferred={preferredKey === streamKey(stream)}
+                        onPick={() => onPick(stream)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {groups.map((group) => (
                 <section key={group.name}>
                   <div className="mb-2 flex items-center gap-2 px-1">
@@ -151,6 +171,7 @@ function StreamChoice({
   const quality = streamQuality(stream);
   const size = streamSizeLabel(stream);
   const details = streamDetailLines(stream);
+  const flags = streamFlags(stream);
   const playable = kind === "http" || kind === "hls" || kind === "youtube";
   const label = stream.name || details[0] || "Stream";
 
@@ -179,6 +200,29 @@ function StreamChoice({
             {quality ? (
               <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
                 {quality}
+              </span>
+            ) : null}
+            {flags.cached ? (
+              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
+                Cached
+              </span>
+            ) : flags.debrid ? (
+              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Debrid
+              </span>
+            ) : null}
+            {flags.dolbyVision ? (
+              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
+                DV
+              </span>
+            ) : flags.hdr ? (
+              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
+                HDR
+              </span>
+            ) : null}
+            {flags.hevc || flags.av1 ? (
+              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                {flags.av1 ? "AV1" : "HEVC"}
               </span>
             ) : null}
             {preferred ? (

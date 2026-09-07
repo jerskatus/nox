@@ -14,6 +14,9 @@ export type ThemeId = (typeof THEMES)[number]["id"];
 export type PlaybackRate = 1 | 1.25 | 1.5 | 2;
 export type SubtitleMode = "off" | "en" | "last";
 export type SearchModePref = "smart" | "title";
+export type SubtitleSize = "s" | "m" | "l" | "xl";
+export type SubtitleBox = "off" | "dim" | "solid";
+export type SubtitlePos = "low" | "mid" | "high";
 
 type SettingsState = {
   theme: ThemeId;
@@ -23,6 +26,10 @@ type SettingsState = {
   playbackRate: PlaybackRate;
   subtitles: SubtitleMode;
   searchMode: SearchModePref;
+  tvRemote: boolean;
+  subtitleSize: SubtitleSize;
+  subtitleBox: SubtitleBox;
+  subtitlePos: SubtitlePos;
   setTheme: (theme: ThemeId) => void;
   setAutoplayNext: (value: boolean) => void;
   setSkipIntros: (value: boolean) => void;
@@ -30,6 +37,10 @@ type SettingsState = {
   setPlaybackRate: (value: PlaybackRate) => void;
   setSubtitles: (value: SubtitleMode) => void;
   setSearchMode: (value: SearchModePref) => void;
+  setTvRemote: (value: boolean) => void;
+  setSubtitleSize: (value: SubtitleSize) => void;
+  setSubtitleBox: (value: SubtitleBox) => void;
+  setSubtitlePos: (value: SubtitlePos) => void;
 };
 
 export function isThemeId(value: unknown): value is ThemeId {
@@ -46,6 +57,10 @@ export const useSettingsStore = create<SettingsState>()(
       playbackRate: 1,
       subtitles: "last",
       searchMode: "smart",
+      tvRemote: false,
+      subtitleSize: "m",
+      subtitleBox: "dim",
+      subtitlePos: "low",
       setTheme: (theme) => set({ theme }),
       setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
       setSkipIntros: (skipIntros) => set({ skipIntros }),
@@ -56,6 +71,10 @@ export const useSettingsStore = create<SettingsState>()(
         if (typeof window !== "undefined") window.localStorage.setItem("nox-search-mode", searchMode);
         set({ searchMode });
       },
+      setTvRemote: (tvRemote) => set({ tvRemote }),
+      setSubtitleSize: (subtitleSize) => set({ subtitleSize }),
+      setSubtitleBox: (subtitleBox) => set({ subtitleBox }),
+      setSubtitlePos: (subtitlePos) => set({ subtitlePos }),
     }),
     {
       name: "nox-settings",
@@ -68,6 +87,10 @@ export const useSettingsStore = create<SettingsState>()(
         playbackRate: state.playbackRate,
         subtitles: state.subtitles,
         searchMode: state.searchMode,
+        tvRemote: state.tvRemote,
+        subtitleSize: state.subtitleSize,
+        subtitleBox: state.subtitleBox,
+        subtitlePos: state.subtitlePos,
       }),
     },
   ),

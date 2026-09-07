@@ -5,7 +5,10 @@ import {
   useSettingsStore,
   type PlaybackRate,
   type SearchModePref,
+  type SubtitleBox,
   type SubtitleMode,
+  type SubtitlePos,
+  type SubtitleSize,
   type ThemeId,
 } from "@/stores/settings";
 import { GoogleAccountCard } from "@/components/google-connect";
@@ -34,6 +37,10 @@ function OptionsPage() {
   const playbackRate = useSettingsStore((s) => s.playbackRate);
   const subtitles = useSettingsStore((s) => s.subtitles);
   const searchMode = useSettingsStore((s) => s.searchMode);
+  const tvRemote = useSettingsStore((s) => s.tvRemote);
+  const subtitleSize = useSettingsStore((s) => s.subtitleSize);
+  const subtitleBox = useSettingsStore((s) => s.subtitleBox);
+  const subtitlePos = useSettingsStore((s) => s.subtitlePos);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8">
@@ -103,6 +110,63 @@ function OptionsPage() {
               onChange={(id) => useSettingsStore.getState().setSearchMode(id as SearchModePref)}
             />
           }
+        />
+      </Section>
+
+      <Section title="Subtitles">
+        <Row
+          label="Size"
+          hint="How large the on-screen text is"
+          control={
+            <Segmented
+              value={subtitleSize}
+              options={[
+                { id: "s", label: "S" },
+                { id: "m", label: "M" },
+                { id: "l", label: "L" },
+                { id: "xl", label: "XL" },
+              ]}
+              onChange={(id) => useSettingsStore.getState().setSubtitleSize(id as SubtitleSize)}
+            />
+          }
+        />
+        <Row
+          label="Background"
+          hint="Box behind the words"
+          control={
+            <Segmented
+              value={subtitleBox}
+              options={[
+                { id: "off", label: "Off" },
+                { id: "dim", label: "Dim" },
+                { id: "solid", label: "Solid" },
+              ]}
+              onChange={(id) => useSettingsStore.getState().setSubtitleBox(id as SubtitleBox)}
+            />
+          }
+        />
+        <Row
+          label="Position"
+          hint="Low sits on the controls. High sits mid-frame."
+          control={
+            <Segmented
+              value={subtitlePos}
+              options={[
+                { id: "low", label: "Low" },
+                { id: "mid", label: "Mid" },
+                { id: "high", label: "High" },
+              ]}
+              onChange={(id) => useSettingsStore.getState().setSubtitlePos(id as SubtitlePos)}
+            />
+          }
+        />
+      </Section>
+
+      <Section title="TV">
+        <Row
+          label="TV remote mode"
+          hint="Bigger focus rings, hide the cursor, move with the arrow keys. Backspace goes back. Off on the player so seek still works."
+          control={<Switch on={tvRemote} onClick={() => useSettingsStore.getState().setTvRemote(!tvRemote)} label="TV remote mode" />}
         />
       </Section>
     </main>

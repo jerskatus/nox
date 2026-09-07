@@ -25,6 +25,7 @@ import {
 } from "@/lib/stremio/subtitles";
 import type { Stream, Subtitle } from "@/lib/stremio/types";
 import { cn, formatTime } from "@/lib/utils";
+import { useSettingsStore, type SubtitleBox, type SubtitlePos, type SubtitleSize } from "@/stores/settings";
 
 type Props = {
   src: string;
@@ -49,6 +50,8 @@ type Props = {
   onIntroSkip?: (to: number) => void;
   onSubtitleChange?: (lang: string | null) => void;
   onPlaybackError?: () => void;
+  onStable?: () => void;
+  statusNote?: string | null;
   extra?: ReactNode;
 };
 
@@ -77,6 +80,8 @@ export function VideoPlayer({
   onIntroSkip,
   onSubtitleChange,
   onPlaybackError,
+  onStable,
+  statusNote,
   extra,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -98,8 +103,13 @@ export function VideoPlayer({
   const [selectedSub, setSelectedSub] = useState<Subtitle | null>(() =>
     captionsDefault ? preferSubtitle(subtitles, preferredLang) : null,
   );
+  const [secondSub, setSecondSub] = useState<Subtitle | null>(null);
   const [cues, setCues] = useState<Cue[]>([]);
+  const [secondCues, setSecondCues] = useState<Cue[]>([]);
   const [offset, setOffset] = useState(0);
+  const subtitleSize = useSettingsStore((s) => s.subtitleSize);
+  const subtitleBox = useSettingsStore((s) => s.subtitleBox);
+  const subtitlePos = useSettingsStore((s) => s.subtitlePos);
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMessage, setSyncMessage] = useState("");
   const [tapCue, setTapCue] = useState<Cue | null>(null);
@@ -172,6 +182,24 @@ export function VideoPlayer({
   }, [selectedSub?.url]);
 
   useEffect(() => {
+    if (!secondSub?.url || secondSub.url === selectedSub?.url) {
+      setSecondCues([]);
+      return;
+    }
+    let cancelled = false;
+    void loadSubtitleFile(secondSub.url)
+      .then((text) => {
+        if (!cancelled) setSecondCues(parseSubtitleFile(text));
+      })
+      .catch(() => {
+        if (!cancelled) setSecondCues([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [secondSub?.url, selectedSub?.url]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     setError(null);
@@ -188,7 +216,10 @@ export function VideoPlayer({
           instance.loadSource(src);
           instance.attachMedia(videoRef.current);
           instance.on(Hls.Events.ERROR, (_e, data) => {
-            if (data.fatal) setError("This stream could not be played.");
+            if (data.fatal) {
+              setError("This stream could not be played.");
+              onPlaybackError?.();
+            }
           });
           holder.hls = instance;
         } else {
@@ -219,6 +250,24 @@ export function VideoPlayer({
       }
     };
   }, [src, kind]);
+
+  useEffect(() => {
+    if (!waiting || error) return;
+    const timer = window.setTimeout(() => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.ended) return;
+      if (!waitingRef.current) return;
+      setError("This stream stalled.");
+      onPlaybackError?.();
+    }, 12_000);
+    return () => window.clearTimeout(timer);
+  }, [waiting, error, src, onPlaybackError]);
+
+  useEffect(() => {
+    if (error || waiting) return;
+    const timer = window.setTimeout(() => onStable?.(), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [src, error, waiting, onStable]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -400,6 +449,7 @@ export function VideoPlayer({
   }, []);
 
   const shown = activeCue(cues, time, offset);
+  const secondLine = secondCues.length > 0 ? activeCue(secondCues, time, offset) : null;
   const remaining = duration > 0 ? Math.max(0, duration - time) : 0;
   const introEnd = introSkipTo && introSkipTo > 20 ? introSkipTo : 90;
   const showSkipIntro =
@@ -427,6 +477,7 @@ export function VideoPlayer({
   return (
     <div
       ref={wrapRef}
+      data-player="1"
       className="relative h-dvh w-full overflow-hidden bg-bg touch-manipulation"
       onPointerMove={onSurfacePointer}
       onPointerUp={onSurfacePointer}
@@ -479,23 +530,49 @@ export function VideoPlayer({
         <div className="pointer-events-none absolute inset-x-0 top-24 z-20 flex justify-center px-4">
           <div className="pointer-events-auto rounded-lg bg-surface/95 px-5 py-4 text-center shadow-xl">
             <p className="mb-3 text-lg font-semibold">{error}</p>
+            <p className="mb-3 text-sm text-muted">Trying the next source…</p>
             <Button variant="ghost" onClick={onBack}>
               Go back
             </Button>
           </div>
         </div>
+      ) : statusNote ? (
+        <div className="pointer-events-none absolute inset-x-0 top-24 z-20 flex justify-center px-4">
+          <p className="rounded-md bg-surface/95 px-4 py-2 text-sm font-medium shadow-xl">{statusNote}</p>
+        </div>
       ) : null}
 
-      {shown ? (
+      {shown || secondLine ? (
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 z-20 flex justify-center px-6 text-center transition-[bottom] duration-200",
-            controls ? "bottom-28 sm:bottom-32" : "bottom-10",
+            subtitlePos === "high"
+              ? "bottom-1/3"
+              : subtitlePos === "mid"
+                ? "bottom-36"
+                : controls
+                  ? "bottom-28 sm:bottom-32"
+                  : "bottom-10",
           )}
         >
-          <p className="max-w-3xl rounded-sm bg-bg/70 px-4 py-2 text-lg font-medium leading-snug text-fg shadow-lg sm:text-xl">
-            {shown.text}
-          </p>
+          <div className="max-w-3xl">
+            {shown ? (
+              <p className={cn(subSizeClass(subtitleSize), subBoxClass(subtitleBox), "font-medium leading-snug text-fg")}>
+                {shown.text}
+              </p>
+            ) : null}
+            {secondLine ? (
+              <p
+                className={cn(
+                  subSizeClass(subtitleSize === "xl" ? "l" : subtitleSize === "l" ? "m" : "s"),
+                  subBoxClass(subtitleBox),
+                  "mt-1 font-medium leading-snug text-fg/90",
+                )}
+              >
+                {secondLine.text}
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -609,7 +686,7 @@ export function VideoPlayer({
         onPointerUp={(e) => e.stopPropagation()}
       >
         {captionsOpen ? (
-          <div className="mb-2 max-h-56 overflow-y-auto rounded-md bg-surface/95 p-3">
+          <div className="mb-2 max-h-80 overflow-y-auto rounded-md bg-surface/95 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">Subtitles</p>
               <p className="text-xs text-muted">{formatOffset(offset)}</p>
@@ -655,6 +732,14 @@ export function VideoPlayer({
               <Button
                 variant="muted"
                 size="sm"
+                onClick={() => setOffset((v) => Math.round((v - 0.1) * 20) / 20)}
+                disabled={!selectedSub}
+              >
+                −0.1s
+              </Button>
+              <Button
+                variant="muted"
+                size="sm"
                 onClick={() => setOffset((v) => Math.round((v - 0.5) * 20) / 20)}
                 disabled={!selectedSub}
               >
@@ -671,7 +756,67 @@ export function VideoPlayer({
               >
                 +0.5s
               </Button>
+              <Button
+                variant="muted"
+                size="sm"
+                onClick={() => setOffset((v) => Math.round((v + 0.1) * 20) / 20)}
+                disabled={!selectedSub}
+              >
+                +0.1s
+              </Button>
             </div>
+            <div className="mt-3 grid gap-2">
+              <StudioRow label="Size">
+                {(["s", "m", "l", "xl"] as SubtitleSize[]).map((id) => (
+                  <StudioChip key={id} on={subtitleSize === id} onClick={() => useSettingsStore.getState().setSubtitleSize(id)}>
+                    {id.toUpperCase()}
+                  </StudioChip>
+                ))}
+              </StudioRow>
+              <StudioRow label="Box">
+                {(["off", "dim", "solid"] as SubtitleBox[]).map((id) => (
+                  <StudioChip key={id} on={subtitleBox === id} onClick={() => useSettingsStore.getState().setSubtitleBox(id)}>
+                    {id}
+                  </StudioChip>
+                ))}
+              </StudioRow>
+              <StudioRow label="Position">
+                {(["low", "mid", "high"] as SubtitlePos[]).map((id) => (
+                  <StudioChip key={id} on={subtitlePos === id} onClick={() => useSettingsStore.getState().setSubtitlePos(id)}>
+                    {id}
+                  </StudioChip>
+                ))}
+              </StudioRow>
+            </div>
+            {subtitles.length > 1 ? (
+              <div className="mt-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Dual subtitles</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSecondSub(null)}
+                    className={cn("h-9 rounded-sm px-3 text-sm", !secondSub ? "bg-fg text-bg" : "bg-elevated text-muted")}
+                  >
+                    Off
+                  </button>
+                  {subtitles
+                    .filter((sub) => sub.url !== selectedSub?.url)
+                    .map((sub) => (
+                      <button
+                        type="button"
+                        key={`dual-${sub.id ?? sub.url}`}
+                        onClick={() => setSecondSub(sub)}
+                        className={cn(
+                          "h-9 rounded-sm px-3 text-sm",
+                          secondSub?.url === sub.url ? "bg-fg text-bg" : "bg-elevated text-muted",
+                        )}
+                      >
+                        {subtitleLabel(sub)}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            ) : null}
             <p className="mt-2 text-xs text-subtle">Listens to the audio and lines the text up. G / H nudges 0.1s.</p>
           </div>
         ) : null}
@@ -813,6 +958,40 @@ export function VideoPlayer({
         </div>
       </div>
     </div>
+  );
+}
+
+function subSizeClass(size: SubtitleSize) {
+  if (size === "s") return "text-sm sm:text-base";
+  if (size === "l") return "text-xl sm:text-2xl";
+  if (size === "xl") return "text-2xl sm:text-3xl";
+  return "text-lg sm:text-xl";
+}
+
+function subBoxClass(box: SubtitleBox) {
+  if (box === "off") return "px-1 py-0.5 [text-shadow:0_1px_2px_rgb(0_0_0_/_80%)]";
+  if (box === "solid") return "rounded-sm bg-bg px-4 py-2";
+  return "rounded-sm bg-bg/70 px-4 py-2 shadow-lg";
+}
+
+function StudioRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-16 text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function StudioChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn("h-8 rounded-sm px-2.5 text-xs font-semibold uppercase tracking-wide", on ? "bg-fg text-bg" : "bg-elevated text-muted")}
+    >
+      {children}
+    </button>
   );
 }
 

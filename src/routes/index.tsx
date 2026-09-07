@@ -6,6 +6,7 @@ import { ContinueRow } from "@/components/catalog/continue-row";
 import { ProviderRow } from "@/components/catalog/provider-row";
 import { CatalogRow } from "@/components/catalog/row";
 import { YoutubeRow } from "@/components/catalog/youtube-row";
+import { CollectionsRow } from "@/components/catalog/collections-row";
 import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchCatalog, fetchMeta, loadJsonMany } from "@/lib/stremio/client";
@@ -114,6 +115,7 @@ function Home() {
       <div className="relative z-10 -mt-8 flex flex-col gap-8 pb-16 sm:-mt-16 sm:gap-10">
         <ContinueRow items={resume} />
         <ProviderRow />
+        <CollectionsRow />
 
         {list.length > 0 ? <CatalogRow title="My list" items={list} /> : null}
 

@@ -1,5 +1,6 @@
 import { type AddonFetchResult, type Json, fetchAddonJson, fetchAddonJsonMany, fetchAddonText } from "./api";
 import { handleLocalOpen } from "./local-open";
+import { rankStreamsByQuality } from "./stream-rank";
 import type {
   AddonCatalogResponse,
   AddonDescriptor,
@@ -192,30 +193,7 @@ export function streamKind(
 }
 
 export function rankStreams(streams: Stream[]) {
-  const qualityScore = (stream: Stream) => {
-    const text = `${stream.name ?? ""} ${stream.title ?? ""} ${stream.description ?? ""}`.toLowerCase();
-    if (text.includes("4k") || text.includes("2160")) return 40;
-    if (text.includes("1080")) return 30;
-    if (text.includes("720")) return 20;
-    if (text.includes("480")) return 10;
-    return 5;
-  };
-  const kindScore = (stream: Stream) => {
-    const kind = streamKind(stream);
-    if (kind === "http" && isWebPlayable(stream)) return 100;
-    if (kind === "hls" && isWebPlayable(stream)) return 90;
-    if (kind === "youtube") return 70;
-    if (kind === "external") return 20;
-    if (kind === "torrent") return 10;
-    return 0;
-  };
-  return [...streams].sort((a, b) => {
-    const playable = Number(isWebPlayable(b)) - Number(isWebPlayable(a));
-    if (playable !== 0) return playable;
-    const kind = kindScore(b) - kindScore(a);
-    if (kind !== 0) return kind;
-    return qualityScore(b) - qualityScore(a);
-  });
+  return rankStreamsByQuality(streams);
 }
 
 export function magnetFromStream(stream: Stream) {

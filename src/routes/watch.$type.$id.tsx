@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { List } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StreamPicker } from "@/components/player/stream-picker";
 import { streamKey, VideoPlayer, YouTubePlayer } from "@/components/player/video-player";
@@ -21,6 +21,7 @@ import {
   videoTitle,
 } from "@/lib/stremio/client";
 import { streamQuality } from "@/lib/stremio/subtitles";
+import { playableStreams, streamFlags } from "@/lib/stremio/stream-rank";
 import type { Stream } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
 import { useLibraryStore } from "@/stores/library";
@@ -79,10 +80,14 @@ function WatchPage() {
   const ranked = useMemo(() => rankStreams(streamQuery.data ?? []), [streamQuery.data]);
   const [picked, setPicked] = useState<string | null>(null);
   const [showList, setShowList] = useState(true);
+  const [statusNote, setStatusNote] = useState<string | null>(null);
+  const failedKeys = useRef(new Set<string>());
 
   useEffect(() => {
     setPicked(null);
     setShowList(true);
+    setStatusNote(null);
+    failedKeys.current = new Set();
   }, [videoId]);
 
   useEffect(() => {
@@ -101,6 +106,25 @@ function WatchPage() {
   const nextId = meta ? nextVideoId(meta, videoId) : null;
   const nextEp = meta?.videos?.find((v) => v.id === nextId);
   const stored = progressList.find((p) => p.id === id && p.videoId === videoId);
+  const progressRatio = stored && stored.duration > 0 ? stored.position / stored.duration : 0;
+
+  const nextStreamQuery = useQuery({
+    queryKey: ["streams", type, nextId, addons.map((a) => a.transportUrl).join("|")],
+    enabled: Boolean(nextId),
+    queryFn: () => fetchStreams(addons, type, nextId!),
+    staleTime: 180_000,
+  });
+  const nextSubtitlesQuery = useQuery({
+    queryKey: ["subtitles", type, nextId, addons.map((a) => a.transportUrl).join("|")],
+    enabled: Boolean(nextId) && progressRatio > 0.4,
+    queryFn: () => fetchSubtitles(addons, type, nextId!),
+    staleTime: 300_000,
+  });
+  const nextPreloadUrl = useMemo(() => {
+    const nextRanked = rankStreams(nextStreamQuery.data ?? []);
+    const match = (rememberStream ? pickRememberedStream(nextRanked, pref) : null) ?? firstPlayableStream(nextRanked);
+    return match?.url;
+  }, [nextStreamQuery.data, pref, rememberStream, nextSubtitlesQuery.data]);
 
   const title = meta?.name ?? "Loading";
   const episodeLabel = episode
@@ -164,12 +188,22 @@ function WatchPage() {
   }
 
   function tryNextStream() {
-    const playable = ranked.filter((s) => isWebPlayable(s) && ["http", "hls", "youtube"].includes(streamKind(s)));
-    const index = playable.findIndex((s) => streamKey(s) === picked);
-    const fallback = playable[index + 1] ?? playable.find((s) => streamKey(s) !== picked);
-    if (!fallback) return;
-    remember(fallback);
+    if (picked) failedKeys.current.add(picked);
+    const playable = playableStreams(ranked).filter((s) => !failedKeys.current.has(streamKey(s)));
+    const fallback = playable[0];
+    if (!fallback) {
+      setShowList(true);
+      setPicked(null);
+      setStatusNote("Every source failed. Pick another stream.");
+      return;
+    }
+    const flags = streamFlags(fallback);
+    const label = [fallback.addonName, streamQuality(fallback), flags.cached ? "Cached" : flags.debrid ? "Debrid" : null]
+      .filter(Boolean)
+      .join(" · ");
+    setStatusNote(`Switching to ${label}`);
     setPicked(streamKey(fallback));
+    window.setTimeout(() => setStatusNote(null), 4000);
   }
 
   if (metaQuery.isLoading) {
@@ -224,7 +258,10 @@ function WatchPage() {
 
   if ((kind === "http" || kind === "hls") && selected.url && isWebPlayable(selected)) {
     return (
-      <VideoPlayer
+      <>
+        <NextEpisodePreload url={nextPreloadUrl} active={progressRatio > 0.5} />
+        <VideoPlayer
+        key={picked ?? selected.url}
         src={selected.url}
         kind={kind}
         title={title}
@@ -249,8 +286,11 @@ function WatchPage() {
           if (lang) savePref(id, { subtitleLang: lang });
         }}
         onPlaybackError={tryNextStream}
+        onStable={() => remember(selected)}
+        statusNote={statusNote}
         extra={extra}
       />
+      </>
     );
   }
 
@@ -268,4 +308,21 @@ function WatchPage() {
       onPick={onPick}
     />
   );
+}
+
+function NextEpisodePreload({ url, active }: { url?: string; active: boolean }) {
+  useEffect(() => {
+    if (!url || !active) return;
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+    video.src = url;
+    video.load();
+    return () => {
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [url, active]);
+  return null;
 }

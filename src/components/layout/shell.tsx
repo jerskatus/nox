@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { Nav } from "./nav";
+import { startTvRemote } from "@/lib/tv-remote";
 import { useAddonStore } from "@/stores/addons";
 import { useGoogleStore } from "@/stores/google";
 import { useLibraryStore } from "@/stores/library";
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isWatch = pathname.startsWith("/watch");
   const theme = useSettingsStore((s) => s.theme);
+  const tvRemote = useSettingsStore((s) => s.tvRemote);
 
   useEffect(() => {
     void Promise.resolve(useAddonStore.persist.rehydrate()).then(() => {
@@ -28,6 +30,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(isThemeId(theme) ? theme : "nox");
   }, [theme]);
+
+  useEffect(() => {
+    if (!tvRemote) return;
+    return startTvRemote();
+  }, [tvRemote]);
 
   if (isWatch) return children;
 

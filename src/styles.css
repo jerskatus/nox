@@ -175,6 +175,27 @@ html[data-theme="gold"] {
   }
 }
 
+html[data-tv] a:focus-visible,
+html[data-tv] button:focus-visible,
+html[data-tv] [data-tv]:focus-visible,
+html[data-tv] select:focus-visible {
+  outline: 3px solid var(--color-fg);
+  outline-offset: 3px;
+}
+
+html[data-tv] button,
+html[data-tv] a {
+  min-height: 44px;
+}
+
+html[data-tv-cursor="hidden"] {
+  cursor: none;
+}
+
+html[data-tv-cursor="hidden"] * {
+  cursor: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
