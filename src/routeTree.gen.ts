@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddonsRouteImport } from './routes/addons'
 import { Route as ListRouteImport } from './routes/list'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as YoutubeRouteImport } from './routes/youtube'
 import { Route as ApiMediaRouteImport } from './routes/api/media'
 import { Route as BrowseTypeRouteImport } from './routes/browse.$type'
 import { Route as ProviderIdRouteImport } from './routes/provider.$id'
@@ -37,6 +38,11 @@ const ListRoute = ListRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const YoutubeRoute = YoutubeRouteImport.update({
+  id: '/youtube',
+  path: '/youtube',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaRoute = ApiMediaRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/addons': typeof AddonsRoute
   '/list': typeof ListRoute
   '/search': typeof SearchRoute
+  '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/addons': typeof AddonsRoute
   '/list': typeof ListRoute
   '/search': typeof SearchRoute
+  '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/addons': typeof AddonsRoute
   '/list': typeof ListRoute
   '/search': typeof SearchRoute
+  '/youtube': typeof YoutubeRoute
   '/api/media': typeof ApiMediaRoute
   '/browse/$type': typeof BrowseTypeRoute
   '/provider/$id': typeof ProviderIdRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/addons'
     | '/list'
     | '/search'
+    | '/youtube'
     | '/api/media'
     | '/browse/$type'
     | '/provider/$id'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/addons'
     | '/list'
     | '/search'
+    | '/youtube'
     | '/api/media'
     | '/browse/$type'
     | '/provider/$id'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/addons'
     | '/list'
     | '/search'
+    | '/youtube'
     | '/api/media'
     | '/browse/$type'
     | '/provider/$id'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AddonsRoute: typeof AddonsRoute
   ListRoute: typeof ListRoute
   SearchRoute: typeof SearchRoute
+  YoutubeRoute: typeof YoutubeRoute
   ApiMediaRoute: typeof ApiMediaRoute
   BrowseTypeRoute: typeof BrowseTypeRoute
   ProviderIdRoute: typeof ProviderIdRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/youtube': {
+      id: '/youtube'
+      path: '/youtube'
+      fullPath: '/youtube'
+      preLoaderRoute: typeof YoutubeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/media': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AddonsRoute: AddonsRoute,
   ListRoute: ListRoute,
   SearchRoute: SearchRoute,
+  YoutubeRoute: YoutubeRoute,
   ApiMediaRoute: ApiMediaRoute,
   BrowseTypeRoute: BrowseTypeRoute,
   ProviderIdRoute: ProviderIdRoute,

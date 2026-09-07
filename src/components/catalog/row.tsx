@@ -29,7 +29,7 @@ export function CatalogRow({
 
   return (
     <section className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <div className="mb-3 flex items-baseline justify-between gap-3 px-4 sm:px-8 lg:px-12">
+      <div className="mb-2 flex items-baseline justify-between gap-3 px-4 sm:mb-3 sm:px-8 lg:px-12">
         <h2 className="text-lg font-semibold">{title}</h2>
         {viewAll ? (
           <Link {...viewAll} className="shrink-0 text-sm text-muted touch-manipulation">
@@ -40,7 +40,7 @@ export function CatalogRow({
       <div className="relative">
         <div
           ref={scroller}
-          className="no-scrollbar flex gap-2 overflow-x-auto px-4 sm:gap-3 sm:px-8 lg:px-12"
+          className="no-scrollbar flex gap-1 overflow-x-auto px-4 sm:gap-1.5 sm:px-8 lg:px-12"
         >
           {loading
             ? Array.from({ length: 8 }).map((_, i) => <PosterSkeleton key={i} />)

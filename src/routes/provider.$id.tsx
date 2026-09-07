@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { PosterCard } from "@/components/catalog/poster-card";
+import { PosterGrid } from "@/components/catalog/poster-card";
 import { ProviderMark } from "@/components/catalog/provider-mark";
-import { PosterSkeleton } from "@/components/ui/skeleton";
 import { fetchCatalog } from "@/lib/stremio/client";
 import { providerById } from "@/lib/stremio/providers";
 import { STREAMING_CATALOGS_URL } from "@/lib/stremio/urls";
@@ -69,16 +68,7 @@ function ProviderPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3">
-        {query.isLoading
-          ? Array.from({ length: 12 }).map((_, i) => <PosterSkeleton key={i} />)
-          : items.map((item) => (
-              <PosterCard key={`${item.type}:${item.id}`} item={item} className="w-full max-w-full" />
-            ))}
-      </div>
-      {!query.isLoading && items.length === 0 ? (
-        <p className="mt-10 text-center text-muted">Nothing listed for {provider.name} right now.</p>
-      ) : null}
+      <PosterGrid items={items} loading={query.isLoading} empty={`Nothing listed for ${provider.name} right now.`} />
     </main>
   );
 }

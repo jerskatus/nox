@@ -15,12 +15,17 @@
   --color-accent-hover: #f40612;
   --color-border: #2a2a2a;
   --color-overlay: rgb(0 0 0 / 55%);
+  --color-imdb: #f5c518;
+  --color-imdb-fg: #0d0d0d;
 
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
 
   --aspect-poster: 2 / 3;
   --aspect-wide: 16 / 9;

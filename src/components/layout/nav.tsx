@@ -4,13 +4,20 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { to: "/" as const, label: "Home" },
-  { to: "/browse/$type" as const, params: { type: "series" }, label: "TV Shows" },
-  { to: "/browse/$type" as const, params: { type: "movie" }, label: "Movies" },
-  { to: "/browse/$type" as const, params: { type: "channel" }, label: "Channels" },
-  { to: "/list" as const, label: "My List" },
-  { to: "/addons" as const, label: "Add-ons" },
+type NavItem =
+  | { to: "/"; label: string }
+  | { to: "/browse/$type"; params: { type: string }; label: string }
+  | { to: "/youtube"; label: string }
+  | { to: "/list"; label: string }
+  | { to: "/addons"; label: string };
+
+const LINKS: NavItem[] = [
+  { to: "/", label: "Home" },
+  { to: "/browse/$type", params: { type: "series" }, label: "TV Shows" },
+  { to: "/browse/$type", params: { type: "movie" }, label: "Movies" },
+  { to: "/youtube", label: "YouTube" },
+  { to: "/list", label: "My List" },
+  { to: "/addons", label: "Add-ons" },
 ];
 
 export function Nav() {
@@ -60,7 +67,9 @@ export function Nav() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300",
-          solid || open || pathname === "/search" ? "bg-bg" : "bg-linear-to-b from-bg/80 to-transparent",
+          solid || open || pathname === "/search" || pathname === "/youtube"
+            ? "bg-bg"
+            : "bg-linear-to-b from-bg/80 to-transparent",
         )}
       >
         <div className="relative z-50 flex h-16 items-center gap-3 px-4 sm:h-[68px] sm:gap-4 sm:px-8 lg:px-12">
@@ -70,14 +79,7 @@ export function Nav() {
 
           <nav className="hidden items-center gap-5 md:flex">
             {LINKS.map((link) => (
-              <NavLink
-                key={link.label}
-                to={link.to}
-                params={"params" in link ? link.params : undefined}
-                active={isActive(pathname, link)}
-              >
-                {link.label}
-              </NavLink>
+              <NavLink key={link.label} item={link} active={isActive(pathname, link)} />
             ))}
           </nav>
 
@@ -115,15 +117,7 @@ export function Nav() {
           />
           <nav className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+4rem)] bottom-0 overflow-y-auto bg-bg px-4 py-4">
             {LINKS.map((link) => (
-              <MobileLink
-                key={link.label}
-                to={link.to}
-                params={"params" in link ? link.params : undefined}
-                active={isActive(pathname, link)}
-                onClick={() => setOpen(false)}
-              >
-                {link.label}
-              </MobileLink>
+              <MobileLink key={link.label} item={link} active={isActive(pathname, link)} onClick={() => setOpen(false)} />
             ))}
             <button
               type="button"
@@ -140,10 +134,7 @@ export function Nav() {
   );
 }
 
-function isActive(
-  pathname: string,
-  link: (typeof LINKS)[number],
-) {
+function isActive(pathname: string, link: NavItem) {
   if (link.to === "/") return pathname === "/";
   if (link.to === "/browse/$type" && "params" in link && link.params) {
     return pathname === `/browse/${link.params.type}`;
@@ -151,55 +142,41 @@ function isActive(
   return pathname === link.to;
 }
 
-function NavLink({
-  to,
-  params,
-  active,
-  children,
-}: {
-  to: "/" | "/browse/$type" | "/list" | "/addons";
-  params?: { type: string };
-  active: boolean;
-  children: string;
-}) {
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
-      to={to}
-      params={params}
+      to={item.to}
+      params={"params" in item ? item.params : undefined}
       className={cn(
         "text-sm transition-colors duration-150",
         active ? "font-semibold text-fg" : "text-muted hover:text-fg",
       )}
     >
-      {children}
+      {item.label}
     </Link>
   );
 }
 
 function MobileLink({
-  to,
-  params,
+  item,
   active,
-  children,
   onClick,
 }: {
-  to: "/" | "/browse/$type" | "/list" | "/addons";
-  params?: { type: string };
+  item: NavItem;
   active: boolean;
-  children: string;
   onClick: () => void;
 }) {
   return (
     <Link
-      to={to}
-      params={params}
+      to={item.to}
+      params={"params" in item ? item.params : undefined}
       onClick={onClick}
       className={cn(
         "block rounded-md px-3 py-3 text-base touch-manipulation",
         active ? "bg-elevated text-fg" : "text-muted",
       )}
     >
-      {children}
+      {item.label}
     </Link>
   );
 }

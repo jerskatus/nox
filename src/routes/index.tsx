@@ -5,12 +5,14 @@ import { Hero } from "@/components/catalog/hero";
 import { ContinueRow } from "@/components/catalog/continue-row";
 import { ProviderRow } from "@/components/catalog/provider-row";
 import { CatalogRow } from "@/components/catalog/row";
+import { YoutubeRow } from "@/components/catalog/youtube-row";
 import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchCatalog, fetchMeta, loadJsonMany } from "@/lib/stremio/client";
 import { HOME_ROWS } from "@/lib/stremio/defaults";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { CINEMETA_URL, resourceUrl } from "@/lib/stremio/urls";
+import { fetchYoutube } from "@/lib/youtube";
 import { useEnabledAddons } from "@/stores/addons";
 import { continueWatching, useLibraryStore } from "@/stores/library";
 
@@ -75,15 +77,9 @@ function Home() {
     staleTime: 300_000,
   });
 
-  const extraCatalogs = useQuery({
-    queryKey: ["home-channels"],
-    queryFn: async () => {
-      const url = resourceUrl("https://v3-channels.strem.io/manifest.json", "catalog", "channel", "top");
-      const results = await loadJsonMany([url]);
-      const result = results[0];
-      if (!result?.ok) return [] as MetaPreview[];
-      return ((result.data as { metas?: MetaPreview[] }).metas ?? []) as MetaPreview[];
-    },
+  const extraYoutube = useQuery({
+    queryKey: ["home-youtube", "v2"],
+    queryFn: () => fetchYoutube({ data: { tab: "trending" } }),
     staleTime: 300_000,
   });
 
@@ -133,10 +129,10 @@ function Home() {
           ) : null,
         )}
 
-        {extraCatalogs.data && extraCatalogs.data.length > 0 ? (
-          <CatalogRow title="YouTube channels" items={extraCatalogs.data} />
-        ) : extraCatalogs.isLoading ? (
-          <CatalogRow title="YouTube channels" items={[]} loading />
+        {extraYoutube.data && extraYoutube.data.videos.length > 0 ? (
+          <YoutubeRow items={extraYoutube.data.videos.slice(0, 16)} />
+        ) : extraYoutube.isLoading ? (
+          <YoutubeRow items={[]} loading />
         ) : null}
       </div>
 

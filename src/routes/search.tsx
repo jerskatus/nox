@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Sparkles, Search as SearchIcon, Type } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
-import { PosterCard } from "@/components/catalog/poster-card";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { PosterGrid } from "@/components/catalog/poster-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PosterSkeleton } from "@/components/ui/skeleton";
+import { KeyboardToggle, OnscreenKeyboard } from "@/components/ui/onscreen-keyboard";
 import { ASK_PROMPTS, runSearch } from "@/lib/stremio/ai-search";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,8 @@ function SearchPage() {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(q);
   const [storedMode, setStoredMode] = useState<SearchMode>("smart");
+  const [keysOpen, setKeysOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const addons = useEnabledAddons();
   const mode: SearchMode = urlMode ?? storedMode;
 
@@ -92,6 +94,7 @@ function SearchPage() {
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
           )}
           <Input
+            ref={inputRef}
             id="app-search"
             type="search"
             enterKeyHint="search"
@@ -102,11 +105,13 @@ function SearchPage() {
                 ? "Ask anything — ‘shows like The Bear’, ‘90s romcoms’"
                 : "Search titles — ‘The Bear’, ‘Dune’"
             }
-            className="h-12 pl-10 text-base"
+            className="h-12 pr-12 pl-10 text-base"
             autoFocus
             autoComplete="off"
+            inputMode={keysOpen ? "none" : "search"}
             aria-label="Search"
           />
+          <KeyboardToggle open={keysOpen} onClick={() => setKeysOpen((v) => !v)} />
         </div>
         <Button type="submit" variant="play" className="h-12 shrink-0 px-5">
           <SearchIcon className="size-4" />
@@ -173,11 +178,7 @@ function SearchPage() {
           ) : null}
 
           {query.isLoading ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <PosterSkeleton key={i} />
-              ))}
-            </div>
+            <PosterGrid loading />
           ) : items.length === 0 ? (
             <p className="text-center text-muted">
               {mode === "smart"
@@ -199,6 +200,15 @@ function SearchPage() {
           )}
         </>
       )}
+      {keysOpen ? (
+        <OnscreenKeyboard
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => go(draft.trim())}
+          onClose={() => setKeysOpen(false)}
+          inputRef={inputRef}
+        />
+      ) : null}
     </main>
   );
 }
@@ -236,13 +246,7 @@ function ResultGrid({ title, items }: { title: string; items: MetaPreview[] }) {
   return (
     <section>
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3">
-        {items.map((item) => (
-          <div key={`${item.type}:${item.id}`} className="min-w-0 [&>a]:w-full [&>a]:max-w-full">
-            <PosterCard item={item} className="w-full max-w-full" />
-          </div>
-        ))}
-      </div>
+      <PosterGrid items={items} />
     </section>
   );
 }

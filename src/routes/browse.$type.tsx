@@ -1,21 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { PosterCard } from "@/components/catalog/poster-card";
-import { PosterSkeleton } from "@/components/ui/skeleton";
+import { PosterGrid } from "@/components/catalog/poster-card";
 import { fetchCatalog } from "@/lib/stremio/client";
-import { CINEMETA_URL, enabledCatalogs, YOUTUBE_URL } from "@/lib/stremio/urls";
+import { CINEMETA_URL, enabledCatalogs } from "@/lib/stremio/urls";
 import { cn } from "@/lib/utils";
 import { useAddonStore } from "@/stores/addons";
 
 export const Route = createFileRoute("/browse/$type")({
+  beforeLoad: ({ params }) => {
+    if (params.type === "channel") throw redirect({ to: "/youtube" });
+  },
   component: BrowsePage,
 });
 
 const TYPE_LABEL: Record<string, string> = {
   movie: "Movies",
   series: "TV Shows",
-  channel: "Channels",
   anime: "Anime",
   tv: "Live TV",
 };
@@ -53,10 +54,7 @@ function BrowsePage() {
   const fallback = useQuery({
     queryKey: ["browse-fallback", type],
     enabled: catalogs.length === 0,
-    queryFn: () => {
-      if (type === "channel") return fetchCatalog(YOUTUBE_URL, "channel", "top");
-      return fetchCatalog(CINEMETA_URL, type, "top");
-    },
+    queryFn: () => fetchCatalog(CINEMETA_URL, type, "top"),
   });
 
   const items = (catalogs.length > 0 ? query.data : fallback.data) ?? [];
@@ -108,7 +106,7 @@ function BrowsePage() {
         </div>
       </div>
 
-      {catalogs.length === 0 && type !== "movie" && type !== "series" && type !== "channel" ? (
+      {catalogs.length === 0 && type !== "movie" && type !== "series" ? (
         <div className="rounded-lg bg-surface p-8 text-muted">
           No catalogs for this type yet.{" "}
           <Link to="/addons" className="text-fg underline">
@@ -118,15 +116,7 @@ function BrowsePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3">
-            {loading
-              ? Array.from({ length: 12 }).map((_, i) => (
-                  <PosterSkeleton key={i} landscape={type === "channel"} />
-                ))
-              : items.map((item) => (
-                  <PosterCard key={`${item.type}:${item.id}`} item={item} className="w-full" />
-                ))}
-          </div>
+          <PosterGrid items={items} loading={loading} />
           <div className="mt-8 flex justify-center gap-3">
             <button
               type="button"

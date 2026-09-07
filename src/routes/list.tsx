@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { PosterCard } from "@/components/catalog/poster-card";
+import { PosterGrid } from "@/components/catalog/poster-card";
 import { useLibraryStore } from "@/stores/library";
 
 export const Route = createFileRoute("/list")({
@@ -21,13 +21,7 @@ function ListPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-3">
-          {list.map((item) => (
-            <div key={`${item.type}:${item.id}`} className="[&>a]:w-full">
-              <PosterCard item={item} />
-            </div>
-          ))}
-        </div>
+        <PosterGrid items={list} />
       )}
     </main>
   );
