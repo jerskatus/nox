@@ -7,6 +7,7 @@ import {
   Minimize,
   Pause,
   Play,
+  Scan,
   SkipBack,
   SkipForward,
   Volume2,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/stremio/subtitles";
 import type { Stream, Subtitle } from "@/lib/stremio/types";
 import { cn, formatTime, unlockMediaPlayback } from "@/lib/utils";
-import { useSettingsStore, type SubtitleBox, type SubtitlePos, type SubtitleSize } from "@/stores/settings";
+import { useSettingsStore, type SubtitleBox, type SubtitlePos, type SubtitleSize, VIDEO_FITS, type VideoFit } from "@/stores/settings";
 
 type Props = {
   src: string;
@@ -128,6 +129,8 @@ export function VideoPlayer({
   const [rate, setRate] = useState(defaultRate);
   const [captionsOpen, setCaptionsOpen] = useState(false);
   const [audioOpen, setAudioOpen] = useState(false);
+  const [fitOpen, setFitOpen] = useState(false);
+  const [fitFlash, setFitFlash] = useState<VideoFit | null>(null);
   const [audioTracks, setAudioTracks] = useState<AudioChoice[]>([]);
   const [selectedAudio, setSelectedAudio] = useState(0);
   const [usingEngine, setUsingEngine] = useState(false);
@@ -146,6 +149,7 @@ export function VideoPlayer({
   const subtitleSize = useSettingsStore((s) => s.subtitleSize);
   const subtitleBox = useSettingsStore((s) => s.subtitleBox);
   const subtitlePos = useSettingsStore((s) => s.subtitlePos);
+  const videoFit = useSettingsStore((s) => s.videoFit);
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMessage, setSyncMessage] = useState("");
   const [tapCue, setTapCue] = useState<Cue | null>(null);
@@ -179,7 +183,7 @@ export function VideoPlayer({
   const engineRestartRef = useRef<(startAt: number) => void>(() => undefined);
   const silentTries = useRef(0);
   waitingRef.current = waiting;
-  const freezeControls = captionsOpen || audioOpen || syncState !== "idle";
+  const freezeControls = captionsOpen || audioOpen || fitOpen || syncState !== "idle";
   const freezeRef = useRef(freezeControls);
   freezeRef.current = freezeControls;
   const subKey = subtitles.map((s) => s.url).join("|");
@@ -785,15 +789,21 @@ export function VideoPlayer({
           event.preventDefault();
           setOffset((v) => Math.round((v + 0.1) * 20) / 20);
           break;
+        case "v":
+          event.preventDefault();
+          cycleVideoFit();
+          break;
         case "c":
           event.preventDefault();
           setCaptionsOpen((v) => !v);
           setAudioOpen(false);
+          setFitOpen(false);
           break;
         case "a":
           event.preventDefault();
           setAudioOpen((v) => !v);
           setCaptionsOpen(false);
+          setFitOpen(false);
           break;
         case "[":
           event.preventDefault();
@@ -824,9 +834,10 @@ export function VideoPlayer({
           }
           break;
         case "Escape":
-          if (captionsOpen || audioOpen || syncState !== "idle") {
+          if (captionsOpen || audioOpen || fitOpen || syncState !== "idle") {
             setCaptionsOpen(false);
             setAudioOpen(false);
+            setFitOpen(false);
             setSyncState("idle");
             break;
           }
@@ -843,6 +854,7 @@ export function VideoPlayer({
     onBack,
     captionsOpen,
     audioOpen,
+    fitOpen,
     syncState,
     unlockSound,
     needsGesture,
@@ -853,6 +865,18 @@ export function VideoPlayer({
     seekMedia,
     mediaTime,
   ]);
+
+  function cycleVideoFit() {
+    const order = VIDEO_FITS.map((item) => item.id);
+    const current = useSettingsStore.getState().videoFit;
+    const next = order[(Math.max(0, order.indexOf(current)) + 1) % order.length]!;
+    applyVideoFit(next);
+  }
+
+  function applyVideoFit(next: VideoFit) {
+    useSettingsStore.getState().setVideoFit(next);
+    setFitFlash(next);
+  }
 
   function toggleFs() {
     const wrap = wrapRef.current;
@@ -927,6 +951,7 @@ export function VideoPlayer({
     freezeRef.current = true;
     setAudioOpen(false);
     setCaptionsOpen(false);
+    setFitOpen(false);
     setSyncState("listening");
     setSyncMessage("Listening to the stream…");
     bumpControls();
@@ -979,6 +1004,12 @@ export function VideoPlayer({
   }
 
   useEffect(() => {
+    if (!fitFlash) return;
+    const timer = window.setTimeout(() => setFitFlash(null), 1400);
+    return () => window.clearTimeout(timer);
+  }, [fitFlash]);
+
+  useEffect(() => {
     const onFs = () => setFs(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
@@ -1024,7 +1055,7 @@ export function VideoPlayer({
     >
       <video
         ref={videoRef}
-        className="size-full object-contain"
+        className={cn("player-video", `player-video-${videoFit}`)}
         poster={poster}
         playsInline
         preload="auto"
@@ -1113,6 +1144,12 @@ export function VideoPlayer({
       ) : banner ? (
         <div className="pointer-events-none absolute inset-x-0 top-24 z-20 flex justify-center px-4">
           <p className="rounded-md bg-surface/95 px-4 py-2 text-sm font-medium shadow-xl">{banner}</p>
+        </div>
+      ) : fitFlash ? (
+        <div className="pointer-events-none absolute inset-x-0 top-24 z-20 flex justify-center px-4">
+          <p className="rounded-md bg-surface/95 px-4 py-2 text-sm font-medium shadow-xl">
+            Picture · {VIDEO_FITS.find((item) => item.id === fitFlash)?.label ?? fitFlash}
+          </p>
         </div>
       ) : null}
 
@@ -1344,6 +1381,38 @@ export function VideoPlayer({
             ) : (
               <p className="mt-2 text-xs text-subtle">English is picked first. A opens this menu. [ and ] cycle tracks.</p>
             )}
+          </div>
+        ) : null}
+        {fitOpen ? (
+          <div className="mb-3 max-h-72 overflow-y-auto rounded-lg bg-surface/95 p-3 shadow-xl ring-1 ring-fg/10 sm:max-w-md">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Picture</p>
+              <p className="text-xs text-muted">V cycles</p>
+            </div>
+            <div className="grid gap-1">
+              {VIDEO_FITS.map((item) => {
+                const on = videoFit === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => applyVideoFit(item.id)}
+                    className={cn(
+                      "flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-left",
+                      on ? "bg-fg text-bg" : "bg-elevated text-fg",
+                    )}
+                  >
+                    <span className="grid size-5 shrink-0 place-items-center">
+                      {on ? <Check className="size-4" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{item.label}</span>
+                      <span className={cn("block text-xs", on ? "text-bg/70" : "text-muted")}>{item.hint}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : null}
         {captionsOpen ? (
@@ -1603,6 +1672,7 @@ export function VideoPlayer({
             onClick={() => {
               setAudioOpen((v) => !v);
               setCaptionsOpen(false);
+              setFitOpen(false);
               bumpControls();
             }}
           >
@@ -1621,10 +1691,30 @@ export function VideoPlayer({
             onClick={() => {
               setCaptionsOpen((v) => !v);
               setAudioOpen(false);
+              setFitOpen(false);
               bumpControls();
             }}
           >
             <Captions className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size={videoFit === "fit" ? "icon-sm" : "sm"}
+            className={cn("bg-transparent", fitOpen && "bg-fg/15")}
+            aria-label={`Picture, ${VIDEO_FITS.find((item) => item.id === videoFit)?.label ?? "Fit"}`}
+            onClick={() => {
+              setFitOpen((v) => !v);
+              setAudioOpen(false);
+              setCaptionsOpen(false);
+              bumpControls();
+            }}
+          >
+            <Scan className="size-5" />
+            {videoFit !== "fit" ? (
+              <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">
+                {VIDEO_FITS.find((item) => item.id === videoFit)?.label}
+              </span>
+            ) : null}
           </Button>
           {onNext ? (
             <Button variant="ghost" size="sm" className="bg-transparent" onClick={onNext}>

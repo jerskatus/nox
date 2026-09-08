@@ -13,6 +13,7 @@ import {
   type SubtitlePos,
   type SubtitleSize,
   type ThemeId,
+  VIDEO_FITS,
 } from "@/stores/settings";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ function OptionsPage() {
   const subtitleSize = useSettingsStore((s) => s.subtitleSize);
   const subtitleBox = useSettingsStore((s) => s.subtitleBox);
   const subtitlePos = useSettingsStore((s) => s.subtitlePos);
+  const videoFit = useSettingsStore((s) => s.videoFit);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8">
@@ -78,6 +80,31 @@ function OptionsPage() {
             />
           }
         />
+        <div className="bg-surface px-4 py-4">
+          <p className="font-medium">Picture</p>
+          <p className="mb-3 text-sm text-muted">
+            Fit keeps the shape. Fill crops. Stretch distorts. Zoom hides letterbox bars.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {VIDEO_FITS.map((item) => {
+              const on = videoFit === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => useSettingsStore.getState().setVideoFit(item.id)}
+                  className={cn(
+                    "min-h-11 rounded-md px-3 py-2 text-left touch-manipulation",
+                    on ? "bg-fg text-bg" : "bg-elevated text-fg hover:bg-elevated/80",
+                  )}
+                >
+                  <span className="block text-sm font-semibold">{item.label}</span>
+                  <span className={cn("mt-0.5 block text-2xs", on ? "text-bg/70" : "text-muted")}>{item.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Row
           label="Subtitles"
           hint="English picks a track. Last used remembers the language per title."

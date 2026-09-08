@@ -17,6 +17,14 @@ export type SearchModePref = "smart" | "title";
 export type SubtitleSize = "s" | "m" | "l" | "xl";
 export type SubtitleBox = "off" | "dim" | "solid";
 export type SubtitlePos = "low" | "mid" | "high";
+export type VideoFit = "fit" | "fill" | "stretch" | "zoom";
+
+export const VIDEO_FITS: { id: VideoFit; label: string; hint: string }[] = [
+  { id: "fit", label: "Fit", hint: "Whole picture. Black bars if the shape doesn’t match." },
+  { id: "fill", label: "Fill", hint: "Crop to fill the screen. Picture stays the right shape." },
+  { id: "stretch", label: "Stretch", hint: "Stretch to fill. Faces may look wider or taller." },
+  { id: "zoom", label: "Zoom", hint: "Punch in to hide letterbox bars." },
+];
 
 type SettingsState = {
   theme: ThemeId;
@@ -32,6 +40,7 @@ type SettingsState = {
   subtitleSize: SubtitleSize;
   subtitleBox: SubtitleBox;
   subtitlePos: SubtitlePos;
+  videoFit: VideoFit;
   setTheme: (theme: ThemeId) => void;
   setAutoplayNext: (value: boolean) => void;
   setSkipIntros: (value: boolean) => void;
@@ -45,10 +54,15 @@ type SettingsState = {
   setSubtitleSize: (value: SubtitleSize) => void;
   setSubtitleBox: (value: SubtitleBox) => void;
   setSubtitlePos: (value: SubtitlePos) => void;
+  setVideoFit: (value: VideoFit) => void;
 };
 
 export function isThemeId(value: unknown): value is ThemeId {
   return THEMES.some((theme) => theme.id === value);
+}
+
+export function isVideoFit(value: unknown): value is VideoFit {
+  return VIDEO_FITS.some((item) => item.id === value);
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -67,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
       subtitleSize: "m",
       subtitleBox: "dim",
       subtitlePos: "low",
+      videoFit: "fit",
       setTheme: (theme) => set({ theme }),
       setAutoplayNext: (autoplayNext) => set({ autoplayNext }),
       setSkipIntros: (skipIntros) => set({ skipIntros }),
@@ -90,6 +105,7 @@ export const useSettingsStore = create<SettingsState>()(
       setSubtitleSize: (subtitleSize) => set({ subtitleSize }),
       setSubtitleBox: (subtitleBox) => set({ subtitleBox }),
       setSubtitlePos: (subtitlePos) => set({ subtitlePos }),
+      setVideoFit: (videoFit) => set({ videoFit }),
     }),
     {
       name: "nox-settings",
@@ -101,6 +117,7 @@ export const useSettingsStore = create<SettingsState>()(
           ...stored,
           muted: false,
           volume: typeof stored.volume === "number" && stored.volume > 0 ? stored.volume : 1,
+          videoFit: isVideoFit(stored.videoFit) ? stored.videoFit : "fit",
         };
       },
       partialize: (state) => ({
@@ -116,6 +133,7 @@ export const useSettingsStore = create<SettingsState>()(
         subtitleSize: state.subtitleSize,
         subtitleBox: state.subtitleBox,
         subtitlePos: state.subtitlePos,
+        videoFit: state.videoFit,
       }),
     },
   ),

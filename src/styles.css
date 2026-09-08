@@ -239,6 +239,31 @@ html[data-theme="gold"] {
     }
   }
 
+  .player-video {
+    width: 100%;
+    height: 100%;
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+  .player-video-fit {
+    object-fit: contain;
+  }
+  .player-video-fill {
+    object-fit: cover;
+  }
+  .player-video-stretch {
+    object-fit: fill;
+  }
+  .player-video-zoom {
+    object-fit: contain;
+    transform: scale(1.34);
+    transform-origin: center center;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .player-video {
+      transition: none;
+    }
+  }
+
   .player-scrubber {
     -webkit-appearance: none;
     appearance: none;
