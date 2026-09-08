@@ -1,4 +1,5 @@
-import { ArrowLeft, ExternalLink, Magnet, Play, Puzzle, Zap } from "lucide-react";
+import { ArrowLeft, ExternalLink, Languages, Magnet, Play, Puzzle, Zap } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { streamKind } from "@/lib/stremio/client";
 import { streamFlags, streamSpokenLabel } from "@/lib/stremio/stream-rank";
@@ -35,9 +36,11 @@ export function StreamPicker({
   onBack,
   onPick,
 }: Props) {
-  const groups = groupStreams(streams);
-  const playable = streams.filter((s) => streamKind(s) === "http" || streamKind(s) === "hls" || streamKind(s) === "youtube");
-  const preferred = preferredKey ? streams.find((s) => streamKey(s) === preferredKey) : null;
+  const { english, other } = partitionByAudio(streams);
+  const groups = groupStreams(english);
+  const otherLangs = groupByLanguage(other);
+  const playable = english.filter((s) => streamKind(s) === "http" || streamKind(s) === "hls" || streamKind(s) === "youtube");
+  const preferred = preferredKey ? english.find((s) => streamKey(s) === preferredKey) : null;
   const best = playable.slice(0, 8);
 
   return (
@@ -77,9 +80,9 @@ export function StreamPicker({
         ) : (
           <>
             <p className="mb-4 text-sm text-muted">
-              {streams.length} source{streams.length === 1 ? "" : "s"} · {playable.length} play in the browser
+              {english.length} English source{english.length === 1 ? "" : "s"}
+              {other.length > 0 ? ` · ${other.length} other language${other.length === 1 ? "" : "s"}` : ""}
               {desktopHasEngine() ? " · desktop converts Atmos / DTS / AC3" : " · AAC sound first"}
-              {" · English audio first"}
             </p>
             {preferred ? (
               <button
@@ -105,51 +108,118 @@ export function StreamPicker({
               </button>
             ) : null}
             <div className="flex flex-col gap-6 pb-16">
-              {best.length > 0 ? (
+              <StreamSection
+                title="Best sources"
+                icon={<Zap className="size-4 text-accent" />}
+                streams={best}
+                selectedKey={selectedKey}
+                preferredKey={preferredKey}
+                onPick={onPick}
+                keyPrefix="best"
+              />
+              {groups.map((group) => (
+                <StreamSection
+                  key={group.name}
+                  title={group.name}
+                  icon={<Puzzle className="size-4 text-muted" />}
+                  count={group.streams.length}
+                  streams={group.streams}
+                  selectedKey={selectedKey}
+                  preferredKey={preferredKey}
+                  onPick={onPick}
+                />
+              ))}
+              {otherLangs.length > 0 ? (
                 <section>
-                  <div className="mb-2 flex items-center gap-2 px-1">
-                    <Zap className="size-4 text-accent" />
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Best sources</h2>
+                  <div className="mb-3 flex items-center gap-2 px-1">
+                    <Languages className="size-4 text-muted" />
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Other languages</h2>
+                    <span className="text-xs text-subtle">{other.length}</span>
                   </div>
-                  <ul className="grid gap-2">
-                    {best.map((stream) => (
-                      <StreamChoice
-                        key={`best-${streamKey(stream)}`}
-                        stream={stream}
-                        active={selectedKey === streamKey(stream)}
-                        preferred={preferredKey === streamKey(stream)}
-                        onPick={() => onPick(stream)}
+                  <div className="flex flex-col gap-5">
+                    {otherLangs.map((group) => (
+                      <StreamSection
+                        key={group.name}
+                        title={group.name}
+                        count={group.streams.length}
+                        streams={group.streams}
+                        selectedKey={selectedKey}
+                        preferredKey={preferredKey}
+                        onPick={onPick}
+                        nested
                       />
                     ))}
-                  </ul>
+                  </div>
                 </section>
               ) : null}
-              {groups.map((group) => (
-                <section key={group.name}>
-                  <div className="mb-2 flex items-center gap-2 px-1">
-                    <Puzzle className="size-4 text-muted" />
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{group.name}</h2>
-                    <span className="text-xs text-subtle">{group.streams.length}</span>
-                  </div>
-                  <ul className="grid gap-2">
-                    {group.streams.map((stream) => (
-                      <StreamChoice
-                        key={streamKey(stream)}
-                        stream={stream}
-                        active={selectedKey === streamKey(stream)}
-                        preferred={preferredKey === streamKey(stream)}
-                        onPick={() => onPick(stream)}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
             </div>
           </>
         )}
       </div>
     </div>
   );
+}
+
+function StreamSection({
+  title,
+  icon,
+  count,
+  streams,
+  selectedKey,
+  preferredKey,
+  onPick,
+  keyPrefix,
+  nested,
+}: {
+  title: string;
+  icon?: ReactNode;
+  count?: number;
+  streams: Stream[];
+  selectedKey?: string | null;
+  preferredKey?: string | null;
+  onPick: (stream: Stream) => void;
+  keyPrefix?: string;
+  nested?: boolean;
+}) {
+  if (streams.length === 0) return null;
+  return (
+    <section>
+      <div className="mb-2 flex items-center gap-2 px-1">
+        {icon}
+        <h2
+          className={
+            nested
+              ? "text-xs font-semibold uppercase tracking-wide text-subtle"
+              : "text-sm font-semibold uppercase tracking-wide text-muted"
+          }
+        >
+          {title}
+        </h2>
+        {count != null ? <span className="text-xs text-subtle">{count}</span> : null}
+      </div>
+      <ul className="grid gap-2">
+        {streams.map((stream) => (
+          <StreamChoice
+            key={`${keyPrefix ?? ""}${streamKey(stream)}`}
+            stream={stream}
+            active={selectedKey === streamKey(stream)}
+            preferred={preferredKey === streamKey(stream)}
+            onPick={() => onPick(stream)}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function partitionByAudio(streams: Stream[]) {
+  const english: Stream[] = [];
+  const other: Stream[] = [];
+  for (const stream of streams) {
+    if (streamFlags(stream).spoken === "foreign") other.push(stream);
+    else english.push(stream);
+  }
+  return { english, other };
 }
 
 function groupStreams(streams: Stream[]) {
@@ -161,6 +231,19 @@ function groupStreams(streams: Stream[]) {
     map.set(name, list);
   }
   return [...map.entries()].map(([name, list]) => ({ name, streams: list }));
+}
+
+function groupByLanguage(streams: Stream[]) {
+  const map = new Map<string, Stream[]>();
+  for (const stream of streams) {
+    const name = streamSpokenLabel(stream) || "Other languages";
+    const list = map.get(name) ?? [];
+    list.push(stream);
+    map.set(name, list);
+  }
+  return [...map.entries()]
+    .map(([name, list]) => ({ name, streams: list }))
+    .sort((a, b) => b.streams.length - a.streams.length || a.name.localeCompare(b.name));
 }
 
 function streamSoundLine(stream: Stream) {
