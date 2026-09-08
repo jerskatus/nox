@@ -332,27 +332,30 @@ export function pickRememberedStream(
   });
   if (playable.length === 0) return null;
   const safe = opts?.desktop ? playable : playable.filter((stream) => !streamFlags(stream).cinemaAudio);
-  const pool = safe.length > 0 ? safe : playable;
+  const withEnglish = (list: Stream[]) => list.filter((stream) => streamFlags(stream).spoken !== "foreign");
+  const pool = withEnglish(safe.length > 0 ? safe : playable);
+  const fallback = safe.length > 0 ? safe : playable;
+  const search = pool.length > 0 ? pool : fallback;
   if (pref?.streamKey) {
-    const exact = pool.find((stream) => streamKeyOf(stream) === pref.streamKey);
+    const exact = search.find((stream) => streamKeyOf(stream) === pref.streamKey);
     if (exact) return exact;
   }
   if (pref?.bingeGroup) {
-    const binge = pool.find((stream) => stream.behaviorHints?.bingeGroup === pref.bingeGroup);
+    const binge = search.find((stream) => stream.behaviorHints?.bingeGroup === pref.bingeGroup);
     if (binge) return binge;
   }
   if (pref?.addonId && pref.quality) {
-    const both = pool.find(
+    const both = search.find(
       (stream) => stream.addonId === pref.addonId && qualityToken(stream) === pref.quality,
     );
     if (both) return both;
   }
   if (pref?.addonId) {
-    const addon = pool.find((stream) => stream.addonId === pref.addonId);
+    const addon = search.find((stream) => stream.addonId === pref.addonId);
     if (addon) return addon;
   }
   if (pref?.addonName) {
-    const addon = pool.find((stream) => stream.addonName === pref.addonName);
+    const addon = search.find((stream) => stream.addonName === pref.addonName);
     if (addon) return addon;
   }
   return null;

@@ -1,7 +1,7 @@
 import { ArrowLeft, ExternalLink, Magnet, Play, Puzzle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { streamKind } from "@/lib/stremio/client";
-import { streamFlags } from "@/lib/stremio/stream-rank";
+import { streamFlags, streamSpokenLabel } from "@/lib/stremio/stream-rank";
 import { streamDetailLines, streamQuality, streamSizeLabel } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -79,6 +79,7 @@ export function StreamPicker({
             <p className="mb-4 text-sm text-muted">
               {streams.length} source{streams.length === 1 ? "" : "s"} · {playable.length} play in the browser
               {desktopHasEngine() ? " · desktop converts Atmos / DTS / AC3" : " · AAC sound first"}
+              {" · English audio first"}
             </p>
             {preferred ? (
               <button
@@ -165,6 +166,7 @@ function groupStreams(streams: Stream[]) {
 function streamSoundLine(stream: Stream) {
   const flags = streamFlags(stream);
   const bits = [
+    streamSpokenLabel(stream),
     flags.aac ? "AAC" : flags.cinemaAudio ? (flags.atmos ? "Atmos" : "DD") : null,
     flags.cinemaAudio ? (desktopHasEngine() ? "converted in app" : "silent in browser") : null,
     flags.cached ? "Cached" : flags.debrid ? "Debrid" : null,

@@ -34,6 +34,23 @@ const CAM_MARK = /\b(?:cam|hdcam|hdts|telesync|telecine|scr|screener|camrip)\b/i
 const CINEMA_AUDIO = /\b(?:atmos|truehd|dts(?:-hd)?(?:\s*ma)?|dd[p+]|ddp|e-?ac-?3|eac3|ac-?3)\b/i;
 const AAC_AUDIO = /\b(?:aac(?:[.\s-]?lc)?|mp4a|mp3|opus|vorbis|stereo|2\.0|2ch)\b/i;
 const AVC_VIDEO = /\b(?:x264|h\.?264|avc)\b/i;
+const TOKEN_EDGE = String.raw`(?:^|[\s.[(\]_{,+\-])`;
+const TOKEN_END = String.raw`(?=$|[\s.\])}_,+\-])`;
+const ENGLISH_AUDIO = new RegExp(`${TOKEN_EDGE}(?:english|eng|en-us|en-gb|en)${TOKEN_END}`, "i");
+const FOREIGN_CODE = new RegExp(
+  `${TOKEN_EDGE}(hin|tam|tel|mal|kan|mar|ben|pan|urd|lat|spa|fre|fra|vfq|vff|vostfr|ger|deu|ita|por|pt-br|rus|jpn|jap|kor|chi|zho|ara|tha|vie|pol|tur|dut|nld|swe|nor|dan|fin|hun|cze|gre|heb|rum|ukr|ind|fil)${TOKEN_END}`,
+  "i",
+);
+const FOREIGN_NAME =
+  "hindi|tamil|telugu|malayalam|kannada|marathi|bengali|punjabi|urdu|spanish|espanol|español|castellano|latino|french|francais|français|german|deutsch|italian|italiano|portuguese|portugues|português|brazilian|russian|japanese|nihongo|korean|chinese|mandarin|cantonese|arabic|thai|vietnamese|polish|turkish|dutch|nederlands|swedish|norwegian|danish|finnish|hungarian|czech|greek|hebrew|romanian|ukrainian|indonesian|filipino|tagalog";
+const FOREIGN_NAME_WORD = new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i");
+const FOREIGN_NAME_TAG = new RegExp(
+  `\\b(?:${FOREIGN_NAME})\\b[\\s._-]*(?:1080p|720p|2160p|4k|bluray|web-?dl|webrip|hdtv|dub(?:bed)?|audio)|(?:1080p|720p|2160p|4k|bluray|web-?dl|webrip|hdtv)[\\s._-]*\\b(?:${FOREIGN_NAME})\\b`,
+  "i",
+);
+const DUAL_AUDIO = /\bdual(?:[\s._-]*audio)?\b|\bmulti(?:[\s._-]*(?:audio|lang|language))?\b/i;
+
+export type SpokenLang = "en" | "foreign" | "dual" | "unknown";
 
 export type StreamFlags = {
   cached: boolean;
@@ -46,6 +63,7 @@ export type StreamFlags = {
   cam: boolean;
   cinemaAudio: boolean;
   aac: boolean;
+  spoken: SpokenLang;
   quality: string | null;
   seeds: number | null;
 };
@@ -70,6 +88,7 @@ export function streamFlags(stream: Stream): StreamFlags {
     cam: CAM_MARK.test(text),
     cinemaAudio,
     aac: !cinemaAudio && AAC_AUDIO.test(text),
+    spoken: spokenFrom(text),
     quality,
     seeds: seedsMatch ? Number(seedsMatch[1]) : null,
   };
@@ -126,6 +145,9 @@ export function streamScore(stream: Stream, opts?: { desktop?: boolean }) {
   if (flags.av1) score += 10;
   else if (flags.hevc) score += 8;
   if (flags.cam) score -= 400;
+  if (flags.spoken === "foreign") score -= 2500;
+  else if (flags.spoken === "en") score += 80;
+  else if (flags.spoken === "dual") score += 40;
   if (flags.seeds != null) score += Math.min(80, Math.log10(flags.seeds + 1) * 28);
   score += sizeScore(stream);
   return score;
@@ -141,4 +163,101 @@ export function playableStreams(streams: Stream[]) {
     const kind = kindOf(stream);
     return kind === "http" || kind === "hls" || kind === "youtube";
   });
+}
+
+export function isEnglishLabel(value?: string | null) {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  if (!v) return false;
+  if (v === "en" || v === "eng" || v === "english" || v === "en-us" || v === "en-gb") return true;
+  if (v.startsWith("en-") || v.startsWith("eng")) return true;
+  return ENGLISH_AUDIO.test(v);
+}
+
+export function spokenFrom(text: string): SpokenLang {
+  const en = ENGLISH_AUDIO.test(text);
+  const foreign = FOREIGN_CODE.test(text) || hasForeignName(text);
+  const dual = DUAL_AUDIO.test(text);
+  if (dual || (en && foreign)) return "dual";
+  if (en) return "en";
+  if (foreign) return "foreign";
+  return "unknown";
+}
+
+function hasForeignName(text: string) {
+  for (const block of text.matchAll(/[\[(]([^)\]]+)[\])]/g)) {
+    if (FOREIGN_NAME_WORD.test(block[1] ?? "")) return true;
+  }
+  const year = text.search(/(?:19|20)\d{2}/);
+  if (year >= 0 && FOREIGN_NAME_WORD.test(text.slice(year))) return true;
+  return FOREIGN_NAME_TAG.test(text);
+}
+
+export function streamSpokenLabel(stream: Stream) {
+  const text = blob(stream);
+  const spoken = spokenFrom(text);
+  if (spoken === "en") return "English";
+  if (spoken === "dual") return "Dual audio";
+  if (spoken === "foreign") {
+    const named = text.match(new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i"));
+    const coded = text.match(FOREIGN_CODE);
+    const raw = (named?.[0] ?? coded?.[1] ?? coded?.[0] ?? "").trim();
+    return prettyLang(raw) || "Not English";
+  }
+  return null;
+}
+
+function prettyLang(raw: string) {
+  const key = raw.toLowerCase();
+  const names: Record<string, string> = {
+    hin: "Hindi",
+    hindi: "Hindi",
+    tam: "Tamil",
+    tamil: "Tamil",
+    tel: "Telugu",
+    telugu: "Telugu",
+    mal: "Malayalam",
+    malayalam: "Malayalam",
+    kan: "Kannada",
+    kannada: "Kannada",
+    spa: "Spanish",
+    spanish: "Spanish",
+    lat: "Latino",
+    latino: "Latino",
+    castellano: "Spanish",
+    espanol: "Spanish",
+    español: "Spanish",
+    fre: "French",
+    fra: "French",
+    french: "French",
+    francais: "French",
+    français: "French",
+    vostfr: "French",
+    ger: "German",
+    deu: "German",
+    german: "German",
+    deutsch: "German",
+    ita: "Italian",
+    italian: "Italian",
+    italiano: "Italian",
+    por: "Portuguese",
+    portuguese: "Portuguese",
+    brazilian: "Portuguese",
+    "pt-br": "Portuguese",
+    rus: "Russian",
+    russian: "Russian",
+    jpn: "Japanese",
+    jap: "Japanese",
+    japanese: "Japanese",
+    kor: "Korean",
+    korean: "Korean",
+    chi: "Chinese",
+    zho: "Chinese",
+    chinese: "Chinese",
+    ara: "Arabic",
+    arabic: "Arabic",
+  };
+  if (names[key]) return names[key];
+  if (!raw) return null;
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }

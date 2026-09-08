@@ -291,7 +291,7 @@ function WatchPage() {
         startAt={stored && stored.position > 8 ? stored.position : 0}
         subtitles={tracks}
         preferredLang={subtitleMode === "en" ? "eng" : subtitleMode === "last" ? pref?.subtitleLang : undefined}
-        preferredAudioLang={pref?.audioLang}
+        preferredAudioLang="eng"
         isEpisode={type === "series" || Boolean(episode)}
         introSkipTo={pref?.introSkipTo}
         autoplayNext={autoplayNext && Boolean(nextId)}

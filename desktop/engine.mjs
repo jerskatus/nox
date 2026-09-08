@@ -60,9 +60,14 @@ export function parseDuration(stderr) {
 
 export function pickAudioIndex(tracks, preferredLang) {
   if (!tracks.length) return 0;
-  const want = (preferredLang ?? "").trim().toLowerCase();
+  const want = (preferredLang || "eng").trim().toLowerCase();
+  const isEn = (lang) => {
+    const v = (lang ?? "").trim().toLowerCase();
+    return v === "en" || v === "eng" || v === "english" || v.startsWith("en-") || v.startsWith("eng");
+  };
   const score = (t) => {
     let n = 0;
+    if (isEn(t.lang)) n += 80;
     if (want && (t.lang.toLowerCase() === want || t.lang.toLowerCase().startsWith(want))) n += 50;
     if (t.isDefault) n += 2;
     if (/aac|mp4a|mp3|opus/.test(t.codec.toLowerCase())) n += 8;

@@ -64,7 +64,7 @@ function OptionsPage() {
         />
         <Row
           label="Remember last stream"
-          hint="Reuse the add-on and quality you picked last time"
+          hint="Reuse the add-on and quality you picked last time. English-language files stay first."
           control={<Switch on={rememberStream} onClick={() => useSettingsStore.getState().setRememberStream(!rememberStream)} label="Remember last stream" />}
         />
         <Row
