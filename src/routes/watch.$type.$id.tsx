@@ -26,7 +26,8 @@ import type { Stream } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
-import { decodeId } from "@/lib/utils";
+import { decodeId, unlockMediaPlayback } from "@/lib/utils";
+import { desktopHasEngine } from "@/lib/desktop";
 
 type Search = { video?: string; auto?: string };
 
@@ -55,6 +56,10 @@ function WatchPage() {
   const playbackRate = useSettingsStore((s) => s.playbackRate);
   const subtitleMode = useSettingsStore((s) => s.subtitles);
   const pref = prefs[id];
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    setDesktop(desktopHasEngine());
+  }, []);
 
   const metaQuery = useQuery({
     queryKey: ["meta", type, id, addons.map((a) => a.transportUrl).join("|")],
@@ -77,7 +82,10 @@ function WatchPage() {
     staleTime: 300_000,
   });
 
-  const ranked = useMemo(() => rankStreams(streamQuery.data ?? []), [streamQuery.data]);
+  const ranked = useMemo(
+    () => rankStreams(streamQuery.data ?? [], { desktop }),
+    [streamQuery.data, desktop],
+  );
   const [picked, setPicked] = useState<string | null>(null);
   const [showList, setShowList] = useState(true);
   const [statusNote, setStatusNote] = useState<string | null>(null);
@@ -92,15 +100,16 @@ function WatchPage() {
 
   useEffect(() => {
     if (auto !== "1" || streamQuery.isLoading || picked) return;
-    const match = (rememberStream ? pickRememberedStream(ranked, pref) : null) ?? firstPlayableStream(ranked);
+    const match =
+      (rememberStream ? pickRememberedStream(ranked, pref, { desktop }) : null) ?? firstPlayableStream(ranked);
     if (!match) return;
     setPicked(streamKey(match));
     setShowList(false);
-  }, [auto, ranked, streamQuery.isLoading, picked, pref, rememberStream]);
+  }, [auto, ranked, streamQuery.isLoading, picked, pref, rememberStream, desktop]);
 
   const selected = ranked.find((s) => streamKey(s) === picked) ?? null;
   const tracks = mergeSubtitles(subtitleQuery.data ?? [], selected?.subtitles);
-  const preferred = pickRememberedStream(ranked, pref);
+  const preferred = pickRememberedStream(ranked, pref, { desktop });
 
   const episode = meta?.videos?.find((v) => v.id === videoId);
   const nextId = meta ? nextVideoId(meta, videoId) : null;
@@ -121,10 +130,11 @@ function WatchPage() {
     staleTime: 300_000,
   });
   const nextPreloadUrl = useMemo(() => {
-    const nextRanked = rankStreams(nextStreamQuery.data ?? []);
-    const match = (rememberStream ? pickRememberedStream(nextRanked, pref) : null) ?? firstPlayableStream(nextRanked);
+    const nextRanked = rankStreams(nextStreamQuery.data ?? [], { desktop });
+    const match =
+      (rememberStream ? pickRememberedStream(nextRanked, pref, { desktop }) : null) ?? firstPlayableStream(nextRanked);
     return match?.url;
-  }, [nextStreamQuery.data, pref, rememberStream, nextSubtitlesQuery.data]);
+  }, [nextStreamQuery.data, pref, rememberStream, nextSubtitlesQuery.data, desktop]);
 
   const title = meta?.name ?? "Loading";
   const episodeLabel = episode
@@ -172,6 +182,7 @@ function WatchPage() {
   }
 
   function onPick(stream: Stream) {
+    unlockMediaPlayback();
     const kind = streamKind(stream);
     if (kind === "external" && stream.externalUrl) {
       window.open(stream.externalUrl, "_blank", "noreferrer");
@@ -187,21 +198,31 @@ function WatchPage() {
     setShowList(false);
   }
 
-  function tryNextStream() {
+  function tryNextStream(opts?: { silent?: boolean }) {
     if (picked) failedKeys.current.add(picked);
-    const playable = playableStreams(ranked).filter((s) => !failedKeys.current.has(streamKey(s)));
+    let playable = playableStreams(ranked).filter((s) => !failedKeys.current.has(streamKey(s)));
+    if (opts?.silent && !desktop) {
+      const safe = playable.filter((s) => !streamFlags(s).cinemaAudio);
+      if (safe.length) playable = safe;
+    }
     const fallback = playable[0];
     if (!fallback) {
       setShowList(true);
       setPicked(null);
-      setStatusNote("Every source failed. Pick another stream.");
+      setStatusNote(
+        opts?.silent
+          ? desktop
+            ? "That source still had no sound. Pick another stream."
+            : "That source had no sound the browser can play. Pick a stream marked AAC."
+          : "Every source failed. Pick another stream.",
+      );
       return;
     }
     const flags = streamFlags(fallback);
     const label = [fallback.addonName, streamQuality(fallback), flags.cached ? "Cached" : flags.debrid ? "Debrid" : null]
       .filter(Boolean)
       .join(" · ");
-    setStatusNote(`Switching to ${label}`);
+    setStatusNote(opts?.silent ? `No sound on that source. Switching to ${label}` : `Switching to ${label}`);
     setPicked(streamKey(fallback));
     window.setTimeout(() => setStatusNote(null), 4000);
   }
@@ -270,6 +291,7 @@ function WatchPage() {
         startAt={stored && stored.position > 8 ? stored.position : 0}
         subtitles={tracks}
         preferredLang={subtitleMode === "en" ? "eng" : subtitleMode === "last" ? pref?.subtitleLang : undefined}
+        preferredAudioLang={pref?.audioLang}
         isEpisode={type === "series" || Boolean(episode)}
         introSkipTo={pref?.introSkipTo}
         autoplayNext={autoplayNext && Boolean(nextId)}
@@ -285,7 +307,11 @@ function WatchPage() {
         onSubtitleChange={(lang) => {
           if (lang) savePref(id, { subtitleLang: lang });
         }}
-        onPlaybackError={tryNextStream}
+        onAudioChange={(lang) => {
+          if (lang) savePref(id, { audioLang: lang });
+        }}
+        onPlaybackError={() => tryNextStream()}
+        onSilentAudio={() => tryNextStream({ silent: true })}
         onStable={() => remember(selected)}
         statusNote={statusNote}
         extra={extra}

@@ -52,75 +52,80 @@ export function PosterCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-sm bg-elevated outline outline-1 -outline-offset-1 outline-fg/10",
-        layout === "grid"
-          ? "w-full min-w-0"
-          : compact
-            ? "w-36 shrink-0 sm:w-40"
-            : landscape
-              ? "w-56 shrink-0 sm:w-72"
-              : "w-28 shrink-0 sm:w-36 md:w-40 lg:w-44",
-        landscape ? "aspect-wide" : "aspect-poster",
+        "group relative z-0 shrink-0 transition-[transform,z-index] duration-200 ease-out fine-hover:hover:z-20 fine-hover:hover:-translate-y-1",
+        layout === "grid" ? "w-full min-w-0" : compact ? "w-36 sm:w-40" : landscape ? "w-56 sm:w-72" : "w-32 sm:w-40 md:w-44 lg:w-48",
         className,
       )}
     >
-      <Link {...href} className="absolute inset-0 block touch-manipulation">
-        {item.poster && !failed ? (
-          <img
-            src={item.poster}
-            alt=""
-            className="size-full object-cover transition-transform duration-300 ease-out fine-hover:group-hover:scale-105"
-            loading="lazy"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <div className="flex size-full items-end bg-elevated p-3">
-            <span className="line-clamp-3 text-sm font-semibold">{item.name}</span>
-          </div>
-        )}
-        {rating ? <ImdbBadge rating={rating} /> : null}
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-bg/90 via-transparent to-transparent opacity-100 fine-hover:opacity-0 fine-hover:group-hover:opacity-100" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-0 items-end justify-between gap-2 p-2 opacity-100 transition-[opacity,transform] duration-200 fine-hover:translate-y-1 fine-hover:opacity-0 fine-hover:group-hover:translate-y-0 fine-hover:group-hover:opacity-100">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-fg">{item.name}</p>
-            {item.year ?? item.releaseInfo ? (
-              <p className="truncate text-2xs text-muted">{item.year ?? item.releaseInfo}</p>
-            ) : null}
-          </div>
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-fg text-bg">
-            <Play className="ml-px size-3.5 fill-current" />
-          </span>
-        </div>
-        {progress !== undefined && progress > 0.02 && progress < 0.97 ? (
-          <div className="absolute inset-x-0 bottom-0 h-1 bg-fg/20">
-            <div className="h-full bg-accent" style={{ width: `${Math.round(progress * 100)}%` }} />
-          </div>
-        ) : null}
-      </Link>
-      <button
-        type="button"
-        aria-label={inList ? `Remove ${item.name} from My list` : `Add ${item.name} to My list`}
-        aria-pressed={inList}
+      <div
         className={cn(
-          "absolute top-1 left-1 z-20 grid size-11 place-items-center rounded-full shadow-md touch-manipulation transition-opacity duration-150",
-          inList ? "bg-fg text-bg" : "bg-bg/80 text-fg hover:bg-bg",
-          "opacity-100 fine-hover:opacity-0 fine-hover:group-hover:opacity-100",
+          "relative overflow-hidden rounded-md bg-elevated shadow-[var(--shadow-border)] transition-[box-shadow] duration-200 fine-hover:group-hover:shadow-[var(--shadow-border-hover)]",
+          landscape ? "aspect-wide" : "aspect-poster",
         )}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          useLibraryStore.getState().toggleList(item);
-        }}
       >
-        {inList ? <Check className="size-4" /> : <Plus className="size-4" />}
-      </button>
+        <Link {...href} className="absolute inset-0 block touch-manipulation">
+          {item.poster && !failed ? (
+            <img
+              src={item.poster}
+              alt=""
+              className="size-full object-cover outline outline-1 -outline-offset-1 outline-fg/10 transition-transform duration-200 ease-out fine-hover:group-hover:scale-105"
+              loading="lazy"
+              onError={() => setFailed(true)}
+            />
+          ) : (
+            <div className="flex size-full items-end bg-elevated p-3">
+              <span className="line-clamp-3 text-sm font-semibold">{item.name}</span>
+            </div>
+          )}
+          {rating ? <ImdbBadge rating={rating} /> : null}
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-bg via-bg/20 to-transparent opacity-90 transition-opacity duration-200 fine-hover:opacity-0 fine-hover:group-hover:opacity-100" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-fg">{item.name}</p>
+              {item.year ?? item.releaseInfo ? (
+                <p className="truncate text-2xs text-muted">{item.year ?? item.releaseInfo}</p>
+              ) : null}
+              {item.description ? (
+                <p className="mt-1 line-clamp-2 hidden text-2xs leading-snug text-fg/80 fine-hover:group-hover:block">
+                  {item.description}
+                </p>
+              ) : null}
+            </div>
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-fg text-bg shadow-md">
+              <Play className="ml-0.5 size-3.5 fill-current" />
+            </span>
+          </div>
+          {progress !== undefined && progress > 0.02 && progress < 0.97 ? (
+            <div className="absolute inset-x-2 bottom-1.5 h-1 overflow-hidden rounded-full bg-fg/20">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+          ) : null}
+        </Link>
+        <button
+          type="button"
+          aria-label={inList ? `Remove ${item.name} from My list` : `Add ${item.name} to My list`}
+          aria-pressed={inList}
+          className={cn(
+            "absolute top-1.5 left-1.5 z-20 grid size-11 place-items-center rounded-full shadow-md touch-manipulation transition-[opacity,background-color] duration-150",
+            inList ? "bg-fg text-bg" : "bg-bg/80 text-fg hover:bg-bg",
+            "opacity-100 fine-hover:opacity-0 fine-hover:group-hover:opacity-100",
+          )}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            useLibraryStore.getState().toggleList(item);
+          }}
+        >
+          {inList ? <Check className="size-4" /> : <Plus className="size-4" />}
+        </button>
+      </div>
     </div>
   );
 }
 
 function ImdbBadge({ rating }: { rating: string }) {
   return (
-    <span className="absolute top-1.5 right-1.5 z-10 flex items-center overflow-hidden rounded-xs shadow-md">
+    <span className="absolute top-1.5 right-1.5 z-10 flex items-center overflow-hidden rounded-sm shadow-md">
       <span className="bg-imdb px-1 py-0.5 text-2xs font-black leading-none tracking-tight text-imdb-fg">
         IMDb
       </span>
@@ -141,7 +146,7 @@ export function PosterGrid({
   empty?: string;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 sm:gap-1.5">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 sm:gap-3">
       {loading
         ? Array.from({ length: 18 }).map((_, i) => <PosterSkeleton key={i} fill />)
         : items?.map((item) => (

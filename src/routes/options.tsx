@@ -190,15 +190,18 @@ function DesktopSection() {
             </p>
             <p className="mt-2 text-sm text-muted">
               The catalog is the live site. When Nox updates, this window picks it up on its own — no reinstall. Playing
-              something? It waits until you leave the player.
+              something? It waits until you leave the player. Atmos, DTS, and AC3 are converted to AAC stereo here so
+              they actually make sound. Surround passthrough to a receiver is not available.
             </p>
           </>
         ) : (
           <>
             <p className="font-medium">Nox on your computer</p>
             <p className="mt-2 mb-4 text-sm text-muted">
-              Install once. The app is a thin window around the live catalog, so every site update shows up here too —
-              list, player, new features included.
+              Install the latest desktop app once. The window loads the live catalog, so list and player updates show up
+              here too. This build converts Atmos / DTS / AC3 to AAC stereo so cinema audio plays in the app — not
+              lossless surround to a receiver. Download a new installer when cinema sound is mentioned; catalog
+              changes do not need that.
             </p>
             <Button asChild variant="play">
               <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">

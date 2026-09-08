@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-[opacity,background-color,color] duration-150 ease-out touch-manipulation active:not-disabled:opacity-80 disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none",
+  "inline-flex items-center justify-center gap-2 font-semibold tracking-wide transition-[opacity,background-color,color,transform] duration-150 ease-out touch-manipulation active:not-disabled:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none",
   {
     variants: {
       variant: {
@@ -15,11 +15,11 @@ const buttonVariants = cva(
         muted: "bg-elevated text-fg hover:bg-elevated/80",
       },
       size: {
-        sm: "h-11 min-h-11 px-3 text-sm rounded-sm",
-        md: "h-11 min-h-11 px-5 text-sm rounded-sm",
-        lg: "h-12 min-h-12 px-7 text-base rounded-md",
-        icon: "size-11 min-h-11 min-w-11 rounded-sm",
-        "icon-sm": "size-11 min-h-11 min-w-11 rounded-sm sm:size-9 sm:min-h-9 sm:min-w-9",
+        sm: "h-11 min-h-11 px-3 text-sm rounded-md",
+        md: "h-11 min-h-11 px-5 text-sm rounded-md",
+        lg: "h-12 min-h-12 px-7 text-base rounded-lg",
+        icon: "size-11 min-h-11 min-w-11 rounded-md",
+        "icon-sm": "size-11 min-h-11 min-w-11 rounded-md sm:size-9 sm:min-h-9 sm:min-w-9",
       },
     },
     defaultVariants: { variant: "play", size: "md" },

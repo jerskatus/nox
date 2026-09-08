@@ -29,6 +29,12 @@
 
   --aspect-poster: 2 / 3;
   --aspect-wide: 16 / 9;
+
+  --shadow-border: 0 0 0 1px rgb(255 255 255 / 8%);
+  --shadow-border-hover: 0 0 0 1px rgb(255 255 255 / 14%);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
 }
 
 @custom-variant fine-hover (@media (hover: hover) and (pointer: fine));
@@ -159,8 +165,9 @@ html[data-theme="gold"] {
     background: linear-gradient(
       to top,
       var(--color-bg) 0%,
-      rgb(0 0 0 / 72%) 28%,
-      rgb(0 0 0 / 18%) 62%,
+      var(--color-bg) 8%,
+      rgb(0 0 0 / 82%) 34%,
+      rgb(0 0 0 / 28%) 62%,
       transparent 100%
     );
   }
@@ -168,10 +175,108 @@ html[data-theme="gold"] {
   .hero-side {
     background: linear-gradient(
       to right,
-      rgb(0 0 0 / 88%) 0%,
-      rgb(0 0 0 / 42%) 42%,
-      transparent 72%
+      rgb(0 0 0 / 92%) 0%,
+      rgb(0 0 0 / 62%) 28%,
+      rgb(0 0 0 / 22%) 52%,
+      transparent 78%
     );
+  }
+
+  .row-edge-left,
+  .row-edge-right {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    width: 2.5rem;
+  }
+
+  .row-edge-left {
+    left: 0;
+    background: linear-gradient(to right, var(--color-bg), transparent);
+  }
+
+  .row-edge-right {
+    right: 0;
+    background: linear-gradient(to left, var(--color-bg), transparent);
+  }
+
+  @media (min-width: 640px) {
+    .row-edge-left,
+    .row-edge-right {
+      width: 4rem;
+    }
+  }
+
+  .hero-lockup > * {
+    animation: hero-rise var(--duration-fast) var(--ease-out) both;
+  }
+  .hero-lockup > *:nth-child(1) {
+    animation-delay: 40ms;
+  }
+  .hero-lockup > *:nth-child(2) {
+    animation-delay: 90ms;
+  }
+  .hero-lockup > *:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  .hero-lockup > *:nth-child(4) {
+    animation-delay: 190ms;
+  }
+  .hero-lockup > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .player-scrubber {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+  }
+  .player-scrubber::-webkit-slider-runnable-track {
+    height: 6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+  }
+  .player-scrubber::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-fg);
+    box-shadow: 0 0 0 4px rgb(0 0 0 / 40%);
+  }
+  .player-scrubber::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--color-fg);
+    box-shadow: 0 0 0 4px rgb(0 0 0 / 40%);
+  }
+  .player-scrubber::-moz-range-track {
+    height: 6px;
+    border: 0;
+    background: transparent;
   }
 }
 

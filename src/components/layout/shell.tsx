@@ -22,7 +22,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       useAddonStore.getState().setHydrated(true);
     });
     void Promise.resolve(useLibraryStore.persist.rehydrate());
-    void Promise.resolve(useSettingsStore.persist.rehydrate());
+    void Promise.resolve(useSettingsStore.persist.rehydrate()).then(() => {
+      const settings = useSettingsStore.getState();
+      settings.setMuted(false);
+      if (settings.volume === 0) settings.setVolume(1);
+    });
   }, []);
 
   useEffect(() => {

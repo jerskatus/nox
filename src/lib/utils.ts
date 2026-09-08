@@ -32,3 +32,28 @@ export function formatRating(value: string | number | undefined) {
   if (!Number.isFinite(n) || n <= 0) return null;
   return n.toFixed(1);
 }
+
+/** Run inside a click so unmuted video.play() is allowed. Keep the context; do not await. */
+export function unlockMediaPlayback() {
+  if (typeof window === "undefined") return;
+  try {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const w = window as unknown as { __noxAudio?: AudioContext };
+    const ctx = w.__noxAudio ?? new AC();
+    w.__noxAudio = ctx;
+    if (ctx.state === "suspended") void ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.001;
+    osc.frequency.value = 220;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.04);
+  } catch {
+    /* autoplay unlock is best-effort */
+  }
+}

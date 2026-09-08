@@ -135,7 +135,10 @@ export type Meta = {
   genres?: string[];
   genre?: string[];
   director?: string[] | string;
+  writer?: string[] | string;
   cast?: string[] | string;
+  country?: string[] | string;
+  awards?: string;
   imdb_id?: string;
   videos?: Video[];
   trailers?: Trailer[];

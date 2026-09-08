@@ -94,14 +94,22 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "nox-settings",
       skipHydration: true,
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<SettingsState>;
+        return {
+          ...current,
+          ...stored,
+          muted: false,
+          volume: typeof stored.volume === "number" && stored.volume > 0 ? stored.volume : 1,
+        };
+      },
       partialize: (state) => ({
         theme: state.theme,
         autoplayNext: state.autoplayNext,
         skipIntros: state.skipIntros,
         rememberStream: state.rememberStream,
         playbackRate: state.playbackRate,
-        volume: state.volume,
-        muted: state.muted,
+        volume: state.volume > 0 ? state.volume : 1,
         subtitles: state.subtitles,
         searchMode: state.searchMode,
         tvRemote: state.tvRemote,

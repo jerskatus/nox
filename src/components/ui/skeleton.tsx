@@ -14,9 +14,9 @@ export function PosterSkeleton({
   return (
     <Skeleton
       className={cn(
-        "rounded-sm",
+        "rounded-md",
         landscape ? "aspect-wide" : "aspect-poster",
-        fill ? "w-full min-w-0" : landscape ? "w-56 shrink-0 sm:w-72" : "w-28 shrink-0 sm:w-36 md:w-40 lg:w-44",
+        fill ? "w-full min-w-0" : landscape ? "w-56 shrink-0 sm:w-72" : "w-32 shrink-0 sm:w-40 md:w-44 lg:w-48",
       )}
     />
   );

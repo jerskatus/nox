@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { PosterSkeleton } from "@/components/ui/skeleton";
 import type { MetaPreview } from "@/lib/stremio/types";
+import { cn } from "@/lib/utils";
 import { PosterCard } from "./poster-card";
 
 export function CatalogRow({
@@ -29,18 +30,18 @@ export function CatalogRow({
 
   return (
     <section className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-4 sm:mb-3 sm:px-8 lg:px-12">
-        <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mb-3 flex items-baseline justify-between gap-3 px-4 sm:mb-4 sm:px-8 lg:px-12">
+        <h2 className="text-base font-semibold tracking-tight sm:text-lg">{title}</h2>
         {viewAll ? (
-          <Link {...viewAll} className="shrink-0 text-sm text-muted touch-manipulation">
-            View all →
+          <Link {...viewAll} className="shrink-0 text-sm text-muted touch-manipulation hover:text-fg">
+            View all
           </Link>
         ) : null}
       </div>
       <div className="relative">
         <div
           ref={scroller}
-          className="no-scrollbar flex gap-1 overflow-x-auto px-4 sm:gap-1.5 sm:px-8 lg:px-12"
+          className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3 sm:gap-3 sm:px-8 lg:px-12"
         >
           {loading
             ? Array.from({ length: 8 }).map((_, i) => <PosterSkeleton key={i} />)
@@ -49,23 +50,31 @@ export function CatalogRow({
             <p className="py-10 text-sm text-muted">{empty ?? "Nothing in this row yet."}</p>
           ) : null}
         </div>
+        {items.length > 4 ? (
+          <>
+            <div className="row-edge-left hidden sm:block" />
+            <div className="row-edge-right hidden sm:block" />
+          </>
+        ) : null}
         {hover && items.length > 4 ? (
           <>
             <button
               type="button"
               aria-label="Scroll left"
-              className="absolute top-0 bottom-0 left-0 hidden w-10 items-center justify-center bg-bg/50 hover:bg-bg/70 md:flex"
+              className={cn(
+                "absolute top-1/2 left-2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-bg/80 text-fg shadow-[var(--shadow-border)] hover:bg-elevated md:flex",
+              )}
               onClick={() => scroll(-1)}
             >
-              <ChevronLeft className="size-8" />
+              <ChevronLeft className="size-6" />
             </button>
             <button
               type="button"
               aria-label="Scroll right"
-              className="absolute top-0 bottom-0 right-0 hidden w-10 items-center justify-center bg-bg/50 hover:bg-bg/70 md:flex"
+              className="absolute top-1/2 right-2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-bg/80 text-fg shadow-[var(--shadow-border)] hover:bg-elevated md:flex"
               onClick={() => scroll(1)}
             >
-              <ChevronRight className="size-8" />
+              <ChevronRight className="size-6" />
             </button>
           </>
         ) : null}

@@ -1,16 +1,9 @@
-import { contextBridge } from "electron";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = dirname(fileURLToPath(import.meta.url));
-let version = "1.0.0";
-try {
-  version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? version;
-} catch {
-  /* packaged asar still ships package.json next to main */
-}
+import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("noxDesktop", {
-  version,
+  version: "1.1.0",
+  hasEngine: true,
+  probe: (url) => ipcRenderer.invoke("nox:probe", url),
+  play: (opts) => ipcRenderer.invoke("nox:play", opts),
+  stop: () => ipcRenderer.invoke("nox:stop"),
 });

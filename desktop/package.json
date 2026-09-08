@@ -1,7 +1,7 @@
 {
   "name": "nox-desktop",
   "productName": "Nox",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Nox desktop shell — always loads the live site so Vercel deploys show up automatically.",
   "author": "Nox",
@@ -12,7 +12,9 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  },
   "devDependencies": {
     "electron": "^37.3.1",
     "electron-builder": "^26.0.12"
@@ -22,9 +24,13 @@
     "productName": "Nox",
     "copyright": "Nox",
     "asar": true,
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
     "files": [
       "main.mjs",
       "preload.mjs",
+      "engine.mjs",
       "offline.html",
       "icon.png",
       "config.json",
@@ -36,15 +42,31 @@
     "win": {
       "icon": "icon.png",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "mac": {
       "icon": "icon.png",
       "category": "public.app-category.entertainment",
       "target": [
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "hardenedRuntime": false
     },
@@ -52,7 +74,12 @@
       "icon": "icon.png",
       "category": "AudioVideo",
       "target": [
-        { "target": "AppImage", "arch": ["x64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {

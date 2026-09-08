@@ -5,6 +5,7 @@ import { streamFlags } from "@/lib/stremio/stream-rank";
 import { streamDetailLines, streamQuality, streamSizeLabel } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
+import { desktopHasEngine } from "@/lib/desktop";
 import { streamKey } from "./video-player";
 
 type Props = {
@@ -44,15 +45,15 @@ export function StreamPicker({
       {background || poster ? (
         <img src={background || poster} alt="" className="absolute inset-0 size-full object-cover opacity-40" />
       ) : null}
-      <div className="absolute inset-0 bg-linear-to-t from-bg via-bg/85 to-bg/50" />
+      <div className="absolute inset-0 bg-linear-to-t from-bg via-bg/88 to-bg/55" />
       <div className="relative mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-6 sm:px-8">
         <div className="mb-6 flex items-start gap-3">
-          <Button variant="ghost" size="icon" className="bg-transparent" onClick={onBack} aria-label="Back">
+          <Button variant="ghost" size="icon" className="rounded-full bg-transparent" onClick={onBack} aria-label="Back">
             <ArrowLeft className="size-6" />
           </Button>
           <div className="min-w-0 pt-1">
-            <p className="text-xs uppercase tracking-wide text-muted">Choose a stream</p>
-            <h1 className="truncate text-2xl font-semibold">{title}</h1>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Choose a stream</p>
+            <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
             {subtitle ? <p className="truncate text-sm text-muted">{subtitle}</p> : null}
           </div>
         </div>
@@ -66,7 +67,7 @@ export function StreamPicker({
             </p>
           </div>
         ) : streams.length === 0 ? (
-          <div className="rounded-lg bg-surface p-6">
+          <div className="rounded-lg bg-surface p-6 shadow-[var(--shadow-border)]">
             <p className="font-semibold">No streams yet</p>
             <p className="mt-2 text-sm text-muted">
               Install a stream add-on from Add-ons — Torrentio, MediaFusion, Comet, AIOStreams, or any Stremio
@@ -76,24 +77,29 @@ export function StreamPicker({
         ) : (
           <>
             <p className="mb-4 text-sm text-muted">
-              {streams.length} source{streams.length === 1 ? "" : "s"} · {playable.length} play in the browser · cached first
+              {streams.length} source{streams.length === 1 ? "" : "s"} · {playable.length} play in the browser
+              {desktopHasEngine() ? " · desktop converts Atmos / DTS / AC3" : " · AAC sound first"}
             </p>
             {preferred ? (
               <button
                 type="button"
                 onClick={() => onPick(preferred)}
-                className="mb-6 flex w-full items-center justify-between gap-3 rounded-md bg-fg px-4 py-3 text-left text-bg touch-manipulation"
+                className="mb-6 flex w-full items-center gap-4 rounded-lg bg-fg px-4 py-3.5 text-left text-bg touch-manipulation"
               >
-                <span>
-                  <span className="block text-xs font-semibold uppercase tracking-wide opacity-70">Last used</span>
-                  <span className="font-semibold">
-                    {preferred.addonName ?? "Stream"}
-                    {streamQuality(preferred) ? ` · ${streamQuality(preferred)}` : ""}
+                <span className="w-16 shrink-0 sm:w-20">
+                  <span className="block text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
+                    {streamQuality(preferred) ?? "Play"}
+                  </span>
+                  <span className="mt-1 block text-2xs font-semibold uppercase tracking-wide opacity-70">Last used</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{preferred.addonName ?? "Stream"}</span>
+                  <span className="mt-0.5 block truncate text-xs opacity-70">
+                    {streamSoundLine(preferred) || "Play this source again"}
                   </span>
                 </span>
-                <span className="flex items-center gap-2 font-semibold">
-                  <Play className="size-4 fill-current" />
-                  Play
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg text-fg">
+                  <Play className="ml-0.5 size-4 fill-current" />
                 </span>
               </button>
             ) : null}
@@ -156,6 +162,17 @@ function groupStreams(streams: Stream[]) {
   return [...map.entries()].map(([name, list]) => ({ name, streams: list }));
 }
 
+function streamSoundLine(stream: Stream) {
+  const flags = streamFlags(stream);
+  const bits = [
+    flags.aac ? "AAC" : flags.cinemaAudio ? (flags.atmos ? "Atmos" : "DD") : null,
+    flags.cinemaAudio ? (desktopHasEngine() ? "converted in app" : "silent in browser") : null,
+    flags.cached ? "Cached" : flags.debrid ? "Debrid" : null,
+    flags.dolbyVision ? "DV" : flags.hdr ? "HDR" : null,
+  ].filter(Boolean);
+  return bits.join(" · ");
+}
+
 function StreamChoice({
   stream,
   active,
@@ -173,7 +190,10 @@ function StreamChoice({
   const details = streamDetailLines(stream);
   const flags = streamFlags(stream);
   const playable = kind === "http" || kind === "hls" || kind === "youtube";
-  const label = stream.name || details[0] || "Stream";
+  const label = stream.addonName || stream.name || details[0] || "Stream";
+  const headline = quality ?? (playable ? "Play" : kind === "torrent" ? "Torrent" : kind === "external" ? "Open" : "Stream");
+  const sound = streamSoundLine(stream);
+  const silent = flags.cinemaAudio && !flags.aac && !desktopHasEngine();
 
   return (
     <li className="min-w-0">
@@ -181,65 +201,42 @@ function StreamChoice({
         type="button"
         onClick={onPick}
         className={cn(
-          "flex w-full min-w-0 items-center gap-3 rounded-md border bg-surface px-3 py-3 text-left transition-colors duration-150 touch-manipulation",
-          active ? "border-fg/50 bg-elevated" : "border-border hover:bg-elevated",
+          "flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-left shadow-[var(--shadow-border)] transition-[background-color] duration-150 touch-manipulation sm:gap-4",
+          active ? "bg-elevated" : "bg-surface hover:bg-elevated",
         )}
       >
-        <span className="grid size-11 shrink-0 place-items-center rounded-sm bg-fg text-bg">
+        <span className="w-16 shrink-0 sm:w-20">
+          <span className="block text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
+            {headline}
+          </span>
+          {size ? <span className="mt-1 block text-2xs text-muted">{size}</span> : null}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-medium">{label}</span>
+            {preferred ? (
+              <span className="rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-fg">
+                Last used
+              </span>
+            ) : null}
+          </span>
+          <span className={cn("mt-0.5 block truncate text-xs", silent ? "text-subtle" : "text-muted")}>
+            {sound || details.slice(0, 2).join(" · ") || kind}
+          </span>
+        </span>
+        <span
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-full",
+            playable ? "bg-fg text-bg" : "bg-elevated text-fg",
+          )}
+        >
           {playable ? (
-            <Play className="size-4 fill-current" />
+            <Play className="ml-0.5 size-4 fill-current" />
           ) : kind === "external" ? (
             <ExternalLink className="size-4" />
           ) : (
             <Magnet className="size-4" />
           )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{label}</span>
-            {quality ? (
-              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
-                {quality}
-              </span>
-            ) : null}
-            {flags.cached ? (
-              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
-                Cached
-              </span>
-            ) : flags.debrid ? (
-              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                Debrid
-              </span>
-            ) : null}
-            {flags.dolbyVision ? (
-              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
-                DV
-              </span>
-            ) : flags.hdr ? (
-              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
-                HDR
-              </span>
-            ) : null}
-            {flags.hevc || flags.av1 ? (
-              <span className="rounded-sm bg-elevated px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                {flags.av1 ? "AV1" : "HEVC"}
-              </span>
-            ) : null}
-            {preferred ? (
-              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-fg">
-                Last used
-              </span>
-            ) : null}
-            {size ? <span className="text-xs text-muted">{size}</span> : null}
-          </span>
-          {details.length > 0 ? (
-            <span className="mt-0.5 block truncate text-xs text-muted">{details.join(" · ")}</span>
-          ) : stream.addonName ? (
-            <span className="mt-0.5 block truncate text-xs text-muted">{kind}</span>
-          ) : null}
-        </span>
-        <span className="shrink-0 rounded-sm bg-elevated px-2 py-1 text-[11px] uppercase tracking-wide text-muted">
-          {playable ? "Play" : kind}
         </span>
       </button>
     </li>

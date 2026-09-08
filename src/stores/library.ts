@@ -24,6 +24,7 @@ export type PlaybackPref = {
   quality?: string;
   streamKey?: string;
   subtitleLang?: string;
+  audioLang?: string;
   introSkipTo?: number;
 };
 

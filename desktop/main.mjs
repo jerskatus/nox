@@ -1,9 +1,12 @@
-import { app, BrowserWindow, Menu, shell, session } from "electron";
+import { app, BrowserWindow, Menu, shell, session, ipcMain } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createEngine, registerPrivilegedSchemes } from "./engine.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
+registerPrivilegedSchemes();
+
 const START_URL = readStartUrl();
 const origin = new URL(START_URL).origin;
 const VERSION_URL = `${origin}/api/version`;
@@ -150,6 +153,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: false,
+      autoplayPolicy: "no-user-gesture-required",
     },
   });
   if (stored.isMaximized) next.maximize();
@@ -201,6 +205,8 @@ function installMenu() {
 app.setName("Nox");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
+const engine = createEngine();
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -212,6 +218,23 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    engine.attach();
+    ipcMain.handle("nox:info", () => ({
+      version: app.getVersion(),
+      hasEngine: engine.available,
+    }));
+    ipcMain.handle("nox:probe", (_event, url) => engine.probe(String(url ?? "")));
+    ipcMain.handle("nox:play", (_event, opts) =>
+      engine.play({
+        url: String(opts?.url ?? ""),
+        startAt: Number(opts?.startAt) || 0,
+        audio: Number.isFinite(Number(opts?.audio)) ? Math.max(0, Math.floor(Number(opts.audio))) : 0,
+        transcode: opts?.transcode !== false,
+      }),
+    );
+    ipcMain.handle("nox:stop", () => {
+      engine.stop();
+    });
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
       callback(permission === "media" || permission === "fullscreen" || permission === "notifications");
     });

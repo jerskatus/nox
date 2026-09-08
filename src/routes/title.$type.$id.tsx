@@ -4,6 +4,8 @@ import { Check, Info, Play, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CatalogRow } from "@/components/catalog/row";
 import { watchPath } from "@/components/catalog/poster-card";
+import { TitleAbout } from "@/components/catalog/title-about";
+import { TitleMeta } from "@/components/catalog/title-meta";
 import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,7 +96,6 @@ function TitleBody({ meta }: { meta: Meta }) {
   const progress = useLibraryStore((s) => s.progress.find((p) => p.id === meta.id));
   const rating = formatRating(meta.imdbRating);
   const genres = (meta.genres ?? meta.genre ?? []).slice(0, 6);
-  const cast = Array.isArray(meta.cast) ? meta.cast.slice(0, 8) : meta.cast ? [meta.cast] : [];
   const videos = meta.videos ?? [];
   const seasons = useMemo(() => {
     const set = new Set<number>();
@@ -123,103 +124,119 @@ function TitleBody({ meta }: { meta: Meta }) {
 
   return (
     <main>
-      <section className="relative min-h-[70vh] overflow-hidden">
+      <section className="relative h-[min(88svh,46rem)] min-h-[32rem] overflow-hidden">
         {meta.background || meta.poster ? (
           <img
             src={meta.background || meta.poster}
             alt=""
-            className="absolute inset-0 size-full object-cover"
+            className="absolute inset-0 size-full object-cover object-[center_20%]"
           />
         ) : null}
         <div className="hero-side absolute inset-0" />
         <div className="hero-mask absolute inset-0" />
-        <div className="relative z-10 flex min-h-[70vh] flex-col justify-end px-4 pb-10 pt-28 sm:px-8 lg:px-12">
-          <div className="max-w-2xl">
-            {meta.logo ? (
-              <img src={meta.logo} alt={meta.name} className="mb-4 h-16 w-auto max-w-sm object-contain sm:h-24" />
-            ) : (
-              <h1 className="mb-3 font-display text-5xl leading-none sm:text-7xl">{meta.name}</h1>
-            )}
-            <p className="mb-3 text-sm text-muted">
-              {[
-                meta.year ?? meta.releaseInfo,
-                rating ? `${rating} IMDb` : null,
-                meta.runtime,
-                genres.join(" · "),
-              ]
-                .filter(Boolean)
-                .join("  ·  ")}
-            </p>
-            {meta.description ? (
-              <p className="mb-6 max-w-xl text-sm text-fg/90 sm:text-base">{meta.description}</p>
+        <div className="relative z-10 flex h-full min-h-[32rem] flex-col justify-end px-4 pb-10 pt-28 sm:px-8 lg:px-12">
+          <div className="flex max-w-5xl items-end gap-8">
+            {meta.poster ? (
+              <div className="hidden w-44 shrink-0 overflow-hidden rounded-lg shadow-[var(--shadow-border)] sm:block lg:w-52">
+                <img
+                  src={meta.poster}
+                  alt=""
+                  className="aspect-poster w-full object-cover outline outline-1 -outline-offset-1 outline-fg/10"
+                />
+              </div>
             ) : null}
-            {cast.length > 0 ? (
-              <p className="mb-6 text-sm text-muted">
-                <span className="text-subtle">Cast </span>
-                {cast.join(", ")}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-3">
-              <Button asChild variant="play" size="lg">
-                <Link {...play}>
-                  <Play className="size-5 fill-current" />
-                  {progress ? "Resume" : "Play"}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={() =>
-                  toggleList({
-                    id: meta.id,
-                    type: meta.type,
-                    name: meta.name,
-                    poster: meta.poster,
-                    background: meta.background,
-                    logo: meta.logo,
-                    description: meta.description,
-                    year: meta.year,
-                    releaseInfo: meta.releaseInfo,
-                    imdbRating: meta.imdbRating,
-                    genres: meta.genres,
-                    posterShape: meta.posterShape,
-                    runtime: meta.runtime,
-                  })
-                }
-              >
-                {inList ? <Check className="size-5" /> : <Plus className="size-5" />}
-                {inList ? "On my list" : "My list"}
-              </Button>
-              {trailer ? (
-                <Button variant="outline" size="lg" onClick={() => setTrailerOpen(true)}>
-                  Trailer
-                </Button>
+            <div className="hero-lockup min-w-0 max-w-2xl flex-1">
+              {meta.logo ? (
+                <img
+                  src={meta.logo}
+                  alt={meta.name}
+                  className="mb-4 h-16 w-auto max-w-sm object-contain drop-shadow-md sm:h-24"
+                />
+              ) : (
+                <h1 className="mb-4 font-display text-5xl leading-none tracking-wide sm:text-7xl">{meta.name}</h1>
+              )}
+              <TitleMeta
+                className="mb-4"
+                year={meta.year ?? meta.releaseInfo}
+                rating={rating}
+                runtime={meta.runtime}
+                genres={genres}
+              />
+              {meta.description ? (
+                <p className="mb-6 line-clamp-3 max-w-xl text-sm leading-relaxed text-fg/90 sm:text-base">
+                  {meta.description}
+                </p>
               ) : null}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Button asChild variant="play" size="lg" className="rounded-full px-8">
+                  <Link {...play}>
+                    <Play className="ml-0.5 size-5 fill-current" />
+                    {progress ? "Resume" : "Play"}
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="rounded-full"
+                  onClick={() =>
+                    toggleList({
+                      id: meta.id,
+                      type: meta.type,
+                      name: meta.name,
+                      poster: meta.poster,
+                      background: meta.background,
+                      logo: meta.logo,
+                      description: meta.description,
+                      year: meta.year,
+                      releaseInfo: meta.releaseInfo,
+                      imdbRating: meta.imdbRating,
+                      genres: meta.genres,
+                      posterShape: meta.posterShape,
+                      runtime: meta.runtime,
+                    })
+                  }
+                >
+                  {inList ? <Check className="size-5" /> : <Plus className="size-5" />}
+                  {inList ? "On my list" : "My list"}
+                </Button>
+                {trailer ? (
+                  <Button variant="ghost" size="lg" className="rounded-full" onClick={() => setTrailerOpen(true)}>
+                    Trailer
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      <TitleAbout meta={meta} />
+
       {episodes.length > 0 ? (
         <section className="px-4 py-10 sm:px-8 lg:px-12">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Episodes</h2>
+              <h2 className="text-xl font-semibold tracking-tight">Episodes</h2>
               <SeasonCount episodes={episodes} />
             </div>
             {seasons.length > 1 ? (
-              <select
-                value={season}
-                onChange={(e) => setSeason(Number(e.target.value))}
-                className="h-11 rounded-md border border-border bg-elevated px-3 text-sm"
-                aria-label="Season"
-              >
+              <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Season">
                 {seasons.map((s) => (
-                  <option key={s} value={s}>
+                  <button
+                    key={s}
+                    type="button"
+                    role="tab"
+                    aria-selected={season === s}
+                    onClick={() => setSeason(s)}
+                    className={cn(
+                      "h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-[background-color,color] duration-150",
+                      season === s ? "bg-fg text-bg" : "bg-elevated text-muted hover:text-fg",
+                    )}
+                  >
                     {s === 0 ? "Specials" : `Season ${s}`}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             ) : null}
           </div>
           <div className="grid gap-3">
@@ -268,27 +285,29 @@ function EpisodeRow({ meta, episode }: { meta: Meta; episode: Video }) {
     <Link
       {...href}
       className={cn(
-        "flex gap-3 rounded-md bg-surface p-2 transition-colors duration-150 touch-manipulation hover:bg-elevated sm:p-3",
+        "group flex gap-3 rounded-lg bg-surface p-2 shadow-[var(--shadow-border)] transition-[background-color] duration-150 touch-manipulation hover:bg-elevated sm:p-3",
         done && "opacity-70",
       )}
     >
-      <div className="relative h-20 w-36 shrink-0 overflow-hidden rounded-sm sm:h-24 sm:w-44">
+      <div className="relative h-24 w-40 shrink-0 overflow-hidden rounded-md sm:h-28 sm:w-52">
         {episode.thumbnail ? (
-          <img src={episode.thumbnail} alt="" className="size-full object-cover" />
+          <img src={episode.thumbnail} alt="" className="size-full object-cover outline outline-1 -outline-offset-1 outline-fg/10" />
         ) : (
           <div className="grid size-full place-items-center bg-elevated text-2xl text-subtle">{n ?? ""}</div>
         )}
+        <span className="absolute inset-0 grid place-items-center bg-bg/35 opacity-100 transition-opacity duration-150 fine-hover:opacity-0 fine-hover:group-hover:opacity-100">
+          <span className="grid size-10 place-items-center rounded-full bg-fg text-bg shadow-md">
+            <Play className="ml-0.5 size-4 fill-current" />
+          </span>
+        </span>
         {done ? (
-          <>
-            <span className="absolute inset-0 bg-bg/45" />
-            <span className="absolute top-1.5 left-1.5 grid size-7 place-items-center rounded-full bg-fg text-bg">
-              <Check className="size-3.5" />
-            </span>
-          </>
+          <span className="absolute top-1.5 left-1.5 grid size-7 place-items-center rounded-full bg-fg text-bg">
+            <Check className="size-3.5" />
+          </span>
         ) : null}
         {inProgress ? (
-          <div className="absolute inset-x-0 bottom-0 h-1 bg-fg/20">
-            <div className="h-full bg-accent" style={{ width: `${Math.round(ratio * 100)}%` }} />
+          <div className="absolute inset-x-2 bottom-1.5 h-1 overflow-hidden rounded-full bg-fg/20">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(ratio * 100)}%` }} />
           </div>
         ) : null}
       </div>

@@ -30,6 +30,10 @@ const CACHED_MARK =
 const DEBRID_MARK =
   /\[(?:rd|ad|pm|dl|tb|oc|ed)(?:\+|(?:\s|$))\]|\breal.?debrid\b|\balldebrid\b|\bpremiumize\b|\btorbox\b|\bdebrid\b/i;
 const CAM_MARK = /\b(?:cam|hdcam|hdts|telesync|telecine|scr|screener|camrip)\b/i;
+/** Dolby Atmos / TrueHD / DTS / AC3 — browsers cannot decode these, so picture plays with a silent tab. */
+const CINEMA_AUDIO = /\b(?:atmos|truehd|dts(?:-hd)?(?:\s*ma)?|dd[p+]|ddp|e-?ac-?3|eac3|ac-?3)\b/i;
+const AAC_AUDIO = /\b(?:aac(?:[.\s-]?lc)?|mp4a|mp3|opus|vorbis|stereo|2\.0|2ch)\b/i;
+const AVC_VIDEO = /\b(?:x264|h\.?264|avc)\b/i;
 
 export type StreamFlags = {
   cached: boolean;
@@ -40,6 +44,8 @@ export type StreamFlags = {
   hevc: boolean;
   av1: boolean;
   cam: boolean;
+  cinemaAudio: boolean;
+  aac: boolean;
   quality: string | null;
   seeds: number | null;
 };
@@ -52,6 +58,7 @@ export function streamFlags(stream: Stream): StreamFlags {
   if (quality === "8K") quality = "8K";
   if (quality && quality.endsWith("P") && quality !== "4K") quality = quality.toLowerCase();
   const seedsMatch = text.match(/(?:👤|👥|seeders?|seeds)\s*[×x:]?\s*(\d{1,6})/i);
+  const cinemaAudio = CINEMA_AUDIO.test(text);
   return {
     cached: CACHED_MARK.test(text),
     debrid: DEBRID_MARK.test(text),
@@ -61,6 +68,8 @@ export function streamFlags(stream: Stream): StreamFlags {
     hevc: /\b(?:hevc|x265|h\.?265)\b/.test(text),
     av1: /\bav1\b/.test(text),
     cam: CAM_MARK.test(text),
+    cinemaAudio,
+    aac: !cinemaAudio && AAC_AUDIO.test(text),
     quality,
     seeds: seedsMatch ? Number(seedsMatch[1]) : null,
   };
@@ -94,9 +103,10 @@ function sizeScore(stream: Stream) {
   return 8;
 }
 
-export function streamScore(stream: Stream) {
+export function streamScore(stream: Stream, opts?: { desktop?: boolean }) {
   const flags = streamFlags(stream);
   const kind = kindOf(stream);
+  const text = blob(stream);
   let score = 0;
   if (webPlayable(stream)) score += 5_000;
   if (flags.cached) score += 10_000;
@@ -107,19 +117,22 @@ export function streamScore(stream: Stream) {
   else if (kind === "external") score += 80;
   else if (kind === "torrent") score += 20;
   score += qualityScore(flags.quality);
-  if (flags.dolbyVision) score += 45;
-  else if (flags.hdr) score += 28;
-  if (flags.atmos) score += 12;
-  if (flags.av1) score += 22;
-  else if (flags.hevc) score += 16;
+  if (flags.cinemaAudio && !opts?.desktop) score -= 12_000;
+  else if (flags.aac) score += 500;
+  else if (flags.cinemaAudio && opts?.desktop) score += 40;
+  if (AVC_VIDEO.test(text)) score += 90;
+  if (flags.dolbyVision) score += 10;
+  else if (flags.hdr) score += 8;
+  if (flags.av1) score += 10;
+  else if (flags.hevc) score += 8;
   if (flags.cam) score -= 400;
   if (flags.seeds != null) score += Math.min(80, Math.log10(flags.seeds + 1) * 28);
   score += sizeScore(stream);
   return score;
 }
 
-export function rankStreamsByQuality(streams: Stream[]) {
-  return [...streams].sort((a, b) => streamScore(b) - streamScore(a));
+export function rankStreamsByQuality(streams: Stream[], opts?: { desktop?: boolean }) {
+  return [...streams].sort((a, b) => streamScore(b, opts) - streamScore(a, opts));
 }
 
 export function playableStreams(streams: Stream[]) {

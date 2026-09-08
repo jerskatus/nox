@@ -66,9 +66,9 @@ export function Nav() {
     <>
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-300",
+          "fixed inset-x-0 top-0 z-50 pt-[env(safe-area-inset-top)] transition-[background-color,backdrop-filter] duration-300",
           solid || open || pathname === "/search" || pathname === "/options" || pathname.startsWith("/collections")
-            ? "bg-bg"
+            ? "bg-bg/85 backdrop-blur-md"
             : "bg-linear-to-b from-bg/80 to-transparent",
         )}
       >
@@ -172,8 +172,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       to={item.to}
       params={"params" in item ? item.params : undefined}
       className={cn(
-        "text-sm transition-colors duration-150",
-        active ? "font-semibold text-fg" : "text-muted hover:text-fg",
+        "relative text-sm transition-colors duration-150",
+        active ? "font-semibold text-fg after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-fg" : "text-muted hover:text-fg",
       )}
     >
       {item.label}

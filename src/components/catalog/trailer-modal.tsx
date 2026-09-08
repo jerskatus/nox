@@ -1,6 +1,7 @@
-import { X } from "lucide-react";
-import { useEffect } from "react";
+import { Play, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { unlockMediaPlayback } from "@/lib/utils";
 
 export function TrailerModal({
   ytId,
@@ -11,6 +12,9 @@ export function TrailerModal({
   title: string;
   onClose: () => void;
 }) {
+  const [active, setActive] = useState(false);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -37,13 +41,36 @@ export function TrailerModal({
           </Button>
         </div>
         <div className="relative aspect-wide bg-bg">
-          <iframe
-            title={`${title} trailer`}
-            className="absolute inset-0 size-full"
-            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0`}
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
+          {active ? (
+            <iframe
+              title={`${title} trailer`}
+              className="absolute inset-0 size-full"
+              src={`https://www.youtube.com/embed/${encodeURIComponent(ytId)}?autoplay=1&mute=0&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(origin)}`}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          ) : (
+            <>
+              <img
+                src={`https://i.ytimg.com/vi/${encodeURIComponent(ytId)}/hqdefault.jpg`}
+                alt=""
+                className="absolute inset-0 size-full object-cover opacity-60"
+              />
+              <button
+                type="button"
+                className="absolute inset-0 z-10 grid place-items-center"
+                onClick={() => {
+                  unlockMediaPlayback();
+                  setActive(true);
+                }}
+              >
+                <span className="flex items-center gap-3 rounded-full bg-fg px-8 py-4 text-lg font-semibold text-bg shadow-xl">
+                  <Play className="size-6 fill-current" />
+                  Play with sound
+                </span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

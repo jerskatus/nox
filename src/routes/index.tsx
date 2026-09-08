@@ -95,7 +95,7 @@ function Home() {
         <Skeleton className="h-[60vh] w-full rounded-none" />
       )}
 
-      <div className="relative z-10 -mt-8 flex flex-col gap-8 pb-16 sm:-mt-16 sm:gap-10">
+      <div className="relative z-10 -mt-6 flex flex-col gap-10 pb-20 sm:-mt-12 sm:gap-12">
         <ContinueRow items={resume} />
         <ProviderRow />
         <CollectionsRow />

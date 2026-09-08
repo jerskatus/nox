@@ -1,6 +1,6 @@
 import { type AddonFetchResult, type Json, fetchAddonJson, fetchAddonJsonMany, fetchAddonText } from "./api";
 import { handleLocalOpen } from "./local-open";
-import { rankStreamsByQuality } from "./stream-rank";
+import { rankStreamsByQuality, streamFlags } from "./stream-rank";
 import type {
   AddonCatalogResponse,
   AddonDescriptor,
@@ -259,8 +259,8 @@ export function streamKind(
   return "other";
 }
 
-export function rankStreams(streams: Stream[]) {
-  return rankStreamsByQuality(streams);
+export function rankStreams(streams: Stream[], opts?: { desktop?: boolean }) {
+  return rankStreamsByQuality(streams, opts);
 }
 
 export function magnetFromStream(stream: Stream) {
@@ -320,33 +320,39 @@ export type StreamPref = {
   streamKey?: string;
 };
 
-export function pickRememberedStream(streams: Stream[], pref?: StreamPref | null) {
+export function pickRememberedStream(
+  streams: Stream[],
+  pref?: StreamPref | null,
+  opts?: { desktop?: boolean },
+) {
   const playable = streams.filter((stream) => {
     if (!isWebPlayable(stream)) return false;
     const kind = streamKind(stream);
     return kind === "http" || kind === "hls" || kind === "youtube";
   });
   if (playable.length === 0) return null;
+  const safe = opts?.desktop ? playable : playable.filter((stream) => !streamFlags(stream).cinemaAudio);
+  const pool = safe.length > 0 ? safe : playable;
   if (pref?.streamKey) {
-    const exact = playable.find((stream) => streamKeyOf(stream) === pref.streamKey);
+    const exact = pool.find((stream) => streamKeyOf(stream) === pref.streamKey);
     if (exact) return exact;
   }
   if (pref?.bingeGroup) {
-    const binge = playable.find((stream) => stream.behaviorHints?.bingeGroup === pref.bingeGroup);
+    const binge = pool.find((stream) => stream.behaviorHints?.bingeGroup === pref.bingeGroup);
     if (binge) return binge;
   }
   if (pref?.addonId && pref.quality) {
-    const both = playable.find(
+    const both = pool.find(
       (stream) => stream.addonId === pref.addonId && qualityToken(stream) === pref.quality,
     );
     if (both) return both;
   }
   if (pref?.addonId) {
-    const addon = playable.find((stream) => stream.addonId === pref.addonId);
+    const addon = pool.find((stream) => stream.addonId === pref.addonId);
     if (addon) return addon;
   }
   if (pref?.addonName) {
-    const addon = playable.find((stream) => stream.addonName === pref.addonName);
+    const addon = pool.find((stream) => stream.addonName === pref.addonName);
     if (addon) return addon;
   }
   return null;

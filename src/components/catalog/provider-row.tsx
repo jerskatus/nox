@@ -5,7 +5,7 @@ import { PROVIDERS } from "@/lib/stremio/providers";
 export function ProviderRow() {
   return (
     <section>
-      <h2 className="mb-4 px-4 text-lg font-semibold sm:px-8 lg:px-12">Browse by provider</h2>
+      <h2 className="mb-4 px-4 text-base font-semibold tracking-tight sm:px-8 sm:text-lg lg:px-12">Browse by provider</h2>
       <div className="no-scrollbar flex gap-5 overflow-x-auto px-4 sm:px-8 lg:px-12">
         {PROVIDERS.map((provider) => (
           <Link
