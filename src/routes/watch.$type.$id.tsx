@@ -108,7 +108,10 @@ function WatchPage() {
   }, [auto, ranked, streamQuery.isLoading, picked, pref, rememberStream, desktop]);
 
   const selected = ranked.find((s) => streamKey(s) === picked) ?? null;
-  const tracks = mergeSubtitles(subtitleQuery.data ?? [], selected?.subtitles);
+  const tracks = useMemo(
+    () => mergeSubtitles(subtitleQuery.data ?? [], selected?.subtitles),
+    [subtitleQuery.data, selected?.subtitles],
+  );
   const preferred = pickRememberedStream(ranked, pref, { desktop });
 
   const episode = meta?.videos?.find((v) => v.id === videoId);

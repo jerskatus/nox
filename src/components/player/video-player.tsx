@@ -179,7 +179,9 @@ export function VideoPlayer({
   const engineRestartRef = useRef<(startAt: number) => void>(() => undefined);
   const silentTries = useRef(0);
   waitingRef.current = waiting;
-  const freezeControls = captionsOpen || audioOpen || syncState === "listening" || syncState === "tap";
+  const freezeControls = captionsOpen || audioOpen || syncState !== "idle";
+  const freezeRef = useRef(freezeControls);
+  freezeRef.current = freezeControls;
   const subKey = subtitles.map((s) => s.url).join("|");
   const [needsSound, setNeedsSound] = useState(false);
   const [needsGesture, setNeedsGesture] = useState(!playArmed);
@@ -187,12 +189,18 @@ export function VideoPlayer({
   const bumpControls = useCallback(() => {
     setControls(true);
     if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    if (freezeControls) return;
+    if (freezeRef.current) return;
     hideTimer.current = window.setTimeout(() => {
       const video = videoRef.current;
-      if (!video || video.paused || video.ended || waitingRef.current) return;
+      if (!video || video.paused || video.ended || waitingRef.current || freezeRef.current) return;
       setControls(false);
     }, 3200);
+  }, []);
+
+  useEffect(() => {
+    if (!freezeControls) return;
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    setControls(true);
   }, [freezeControls]);
 
   const unlockSound = useCallback(() => {
@@ -318,7 +326,8 @@ export function VideoPlayer({
     setSelectedSub(captionsDefault ? preferSubtitle(subtitles, preferredLang) : null);
     setOffset(0);
     setSyncState("idle");
-  }, [subKey, subtitles, preferredLang, captionsDefault]);
+    syncing.current = false;
+  }, [subKey]);
 
   useEffect(() => {
     if (!selectedSub?.url) {
@@ -868,7 +877,7 @@ export function VideoPlayer({
     if (event.pointerType === "mouse" && event.type === "pointermove") return;
     if (event.type !== "pointerup") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (freezeControls) return;
+    if (freezeRef.current) return;
     togglePlay();
   }
 
@@ -915,7 +924,9 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video || cues.length === 0 || syncing.current) return;
     syncing.current = true;
-    setCaptionsOpen(true);
+    freezeRef.current = true;
+    setAudioOpen(false);
+    setCaptionsOpen(false);
     setSyncState("listening");
     setSyncMessage("Listening to the stream…");
     bumpControls();
@@ -1199,7 +1210,9 @@ export function VideoPlayer({
       {syncState === "listening" || syncState === "tap" || syncState === "done" ? (
         <div
           className="absolute inset-x-0 top-1/3 z-40 flex justify-center px-4"
+          onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="w-full max-w-md rounded-lg bg-surface/95 p-4 text-center shadow-xl">
             <p className="text-sm font-semibold uppercase tracking-wide text-muted">Sync subtitles</p>
@@ -1268,6 +1281,7 @@ export function VideoPlayer({
           "absolute inset-x-0 bottom-0 z-30 space-y-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-200 sm:p-6",
           controls || freezeControls ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
         )}
+        onPointerDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
       >
         {audioOpen ? (
@@ -1392,7 +1406,15 @@ export function VideoPlayer({
               >
                 −0.5s
               </Button>
-              <Button variant="accent" size="sm" onClick={() => void runSync()} disabled={!selectedSub || cues.length === 0}>
+              <Button
+                variant="accent"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void runSync();
+                }}
+                disabled={!selectedSub || cues.length === 0}
+              >
                 Sync subtitles
               </Button>
               <Button
@@ -1563,8 +1585,8 @@ export function VideoPlayer({
               variant="ghost"
               size="sm"
               className="bg-transparent"
-              onClick={() => {
-                setCaptionsOpen(true);
+              onClick={(e) => {
+                e.stopPropagation();
                 void runSync();
               }}
             >
