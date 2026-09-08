@@ -27,6 +27,7 @@ import {
   preferSubtitle,
   subtitleLabel,
   upcomingCue,
+  futureCue,
 } from "@/lib/stremio/subtitles";
 import type { Stream, Subtitle } from "@/lib/stremio/types";
 import { cn, formatTime, unlockMediaPlayback } from "@/lib/utils";
@@ -984,10 +985,15 @@ export function VideoPlayer({
       setSyncMessage(`Synced · ${formatOffset(result.offset)}`);
       window.setTimeout(() => setSyncState("idle"), 2200);
     } else {
-      const cue = upcomingCue(cues, now(), offset);
+      const cue = futureCue(cues, now(), offset, 4) ?? upcomingCue(cues, now(), offset);
+      if (cue) {
+        const lead = 4;
+        const at = cue.start - offset - lead;
+        if (at > now() + 0.8) seekMedia(Math.max(0, at), true);
+      }
       setTapCue(cue);
       setSyncState("tap");
-      setSyncMessage("Tap when you hear this line");
+      setSyncMessage("This line is coming up. Tap when you hear it.");
     }
     syncing.current = false;
     bumpControls();
@@ -1002,6 +1008,13 @@ export function VideoPlayer({
     setSyncMessage(`Synced · ${formatOffset(next)}`);
     window.setTimeout(() => setSyncState("idle"), 2200);
   }
+
+  useEffect(() => {
+    if (syncState !== "tap" || !tapCue) return;
+    if (time + offset < tapCue.start + 1.2) return;
+    const next = futureCue(cues, time, offset, 3.5);
+    if (next && next.start !== tapCue.start) setTapCue(next);
+  }, [syncState, tapCue, time, offset, cues]);
 
   useEffect(() => {
     if (!fitFlash) return;
@@ -1262,6 +1275,11 @@ export function VideoPlayer({
             {syncState === "tap" && tapCue ? (
               <>
                 <p className="mt-3 text-base text-fg">“{tapCue.text}”</p>
+                <p className="mt-2 text-sm text-muted">
+                  {tapCue.start - (time + offset) > 0.6
+                    ? `In ${Math.max(1, Math.round(tapCue.start - (time + offset)))}s`
+                    : "Tap now"}
+                </p>
                 <Button className="mt-4 w-full" variant="play" onClick={confirmTap}>
                   I hear this line
                 </Button>

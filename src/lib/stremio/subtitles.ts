@@ -62,6 +62,14 @@ export function upcomingCue(cues: Cue[], time: number, offset: number) {
   return cues.find((cue) => cue.start >= t - 0.15) ?? cues[cues.length - 1] ?? null;
 }
 
+export function futureCue(cues: Cue[], time: number, offset: number, minAhead = 4) {
+  const t = time + offset + minAhead;
+  const soon = cues.filter((cue) => cue.start >= t);
+  if (soon.length === 0) return null;
+  const readable = (cue: Cue) => cue.text.replace(/\s+/g, " ").trim().length >= 8;
+  return soon.find(readable) ?? soon[0] ?? null;
+}
+
 export function correlateOffset(
   samples: Array<{ t: number; voiced: boolean }>,
   cues: Cue[],
