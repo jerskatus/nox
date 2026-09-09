@@ -92,6 +92,7 @@ export type NoxDesktop = {
     startAt?: number;
     audio?: number;
     transcode?: boolean;
+    video?: "copy" | "h264";
   }) => Promise<{ src: string; transcode: boolean }>;
   stop?: () => Promise<void>;
   vlcPlay?: (opts: {
@@ -139,8 +140,19 @@ export function applyUpdateResult(
   return { ...next, message: updateStatusLabel(next) || prev.message };
 }
 
+export function isElectronUserAgent(ua: string | undefined | null) {
+  const text = String(ua ?? "");
+  return /\bElectron\b/i.test(text) || /\bNoxDesktop\b/i.test(text);
+}
+
 export function isNoxDesktop() {
-  return typeof window !== "undefined" && Boolean(window.noxDesktop);
+  if (typeof window === "undefined") return false;
+  if (window.noxDesktop) return true;
+  try {
+    return isElectronUserAgent(window.navigator?.userAgent);
+  } catch {
+    return false;
+  }
 }
 
 export function desktopHasEngine() {

@@ -13,8 +13,12 @@ export function TrailerModal({
   title: string;
   onClose: () => void;
 }) {
-  const [active, setActive] = useState(() => isNoxDesktop());
+  const [active, setActive] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  useEffect(() => {
+    if (isNoxDesktop()) setActive(true);
+  }, []);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -59,6 +63,7 @@ export function TrailerModal({
               />
               <button
                 type="button"
+                data-sound-gate="1"
                 className="absolute inset-0 z-10 grid place-items-center"
                 onClick={() => {
                   unlockMediaPlayback();

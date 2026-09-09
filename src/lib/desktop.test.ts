@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { applyUpdateResult, updateStatusLabel } from "./desktop.ts";
+import { applyUpdateResult, isElectronUserAgent, updateStatusLabel } from "./desktop.ts";
 
 describe("updateStatusLabel", () => {
   it("prefers an explicit message", () => {
@@ -33,5 +33,12 @@ describe("applyUpdateResult", () => {
   it("keeps an explicit idle message", () => {
     const next = applyUpdateResult({ status: "checking" }, { status: "idle", message: "Already current." });
     assert.equal(next.message, "Already current.");
+  });
+});
+
+describe("isElectronUserAgent", () => {
+  it("detects Electron and NoxDesktop", () => {
+    assert.equal(isElectronUserAgent("Mozilla/5.0 Electron/37.3.1 NoxDesktop/1.3.8"), true);
+    assert.equal(isElectronUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0.0.0 Safari/537.36"), false);
   });
 });

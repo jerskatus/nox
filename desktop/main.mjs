@@ -103,7 +103,6 @@ function attachWindow(next) {
 
 function createWindow() {
   const stored = loadBounds();
-  const transparent = process.platform === "win32";
   const next = new BrowserWindow({
     width: stored.width,
     height: stored.height,
@@ -111,17 +110,17 @@ function createWindow() {
     y: stored.y,
     minWidth: 1024,
     minHeight: 640,
-    backgroundColor: transparent ? "#00000000" : "#000000",
-    transparent,
+    backgroundColor: "#000000",
     autoHideMenuBar: true,
     title: "Nox",
     icon: existsSync(join(root, "icon.png")) ? join(root, "icon.png") : undefined,
     webPreferences: {
-      preload: join(root, "preload.mjs"),
+      preload: join(root, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       spellcheck: false,
+      backgroundThrottling: false,
       autoplayPolicy: "no-user-gesture-required",
     },
   });
@@ -255,6 +254,7 @@ if (!gotLock) {
         startAt: Number(opts?.startAt) || 0,
         audio: Number.isFinite(Number(opts?.audio)) ? Math.max(0, Math.floor(Number(opts.audio))) : 0,
         transcode: opts?.transcode !== false,
+        video: opts?.video === "h264" ? "h264" : "copy",
       });
     });
     ipcMain.handle("nox:stop", () => {
@@ -280,6 +280,9 @@ if (!gotLock) {
       void vlc.stop();
       installUpdate();
     });
+    session.defaultSession.setUserAgent(
+      `${session.defaultSession.getUserAgent()} NoxDesktop/${app.getVersion()}`,
+    );
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
       callback(permission === "media" || permission === "fullscreen" || permission === "notifications");
     });

@@ -82,7 +82,7 @@ type AudioChoice = {
 type SyncState = "idle" | "listening" | "tap" | "done";
 
 /** Set true after the user clicks Play with sound so the next source can autoplay. */
-let playArmed = typeof window !== "undefined" && Boolean(window.noxDesktop);
+let playArmed = typeof window !== "undefined" && isNoxDesktop();
 
 export function VideoPlayer({
   src,
@@ -195,6 +195,7 @@ export function VideoPlayer({
   const vlcTimeRef = useRef(0);
   const vlcGaveUpRef = useRef(false);
   const engineGaveUpRef = useRef(false);
+  const engineVideoRef = useRef<"copy" | "h264">("copy");
   const vlcFallbackRef = useRef<() => void>(() => undefined);
   const engineSwapRef = useRef(false);
   const engineGenRef = useRef(0);
@@ -207,7 +208,8 @@ export function VideoPlayer({
   freezeRef.current = freezeControls;
   const subKey = subtitles.map((s) => s.url).join("|");
   const [needsSound, setNeedsSound] = useState(false);
-  const [needsGesture, setNeedsGesture] = useState(() => !playArmed && !isNoxDesktop());
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const [soundGate, setSoundGate] = useState(false);
 
   const bumpControls = useCallback(() => {
     setControls(true);
@@ -421,6 +423,14 @@ export function VideoPlayer({
     const s = useSettingsStore.getState();
     if (s.muted) s.setMuted(false);
     if (s.volume === 0) s.setVolume(1);
+    if (isNoxDesktop()) {
+      playArmed = true;
+      setNeedsGesture(false);
+      setNeedsSound(false);
+      setSoundGate(false);
+      return;
+    }
+    setSoundGate(true);
   }, []);
 
   useEffect(() => {
@@ -449,6 +459,7 @@ export function VideoPlayer({
     vlcTimeRef.current = 0;
     vlcGaveUpRef.current = false;
     engineGaveUpRef.current = false;
+    engineVideoRef.current = "copy";
     vlcFallbackRef.current = () => undefined;
     engineOffsetRef.current = 0;
     engineDurationRef.current = 0;
@@ -607,6 +618,7 @@ export function VideoPlayer({
           startAt,
           audio: engineAudioRef.current || 0,
           transcode: true,
+          video: engineVideoRef.current,
         });
         if (cancelled || gen !== engineGenRef.current) return;
         engineActiveRef.current = true;
@@ -614,7 +626,7 @@ export function VideoPlayer({
         setUsingVlc(false);
         engineSwapRef.current = true;
         video.src = result.src;
-        setEngineNote(null);
+        setEngineNote(engineVideoRef.current === "h264" ? "Converting video…" : null);
         if (api.probe) {
           void api.probe(src).then((info) => {
             if (cancelled || gen !== engineGenRef.current) return;
@@ -736,6 +748,7 @@ export function VideoPlayer({
 
     vlcFallbackRef.current = () => {
       if (cancelled) return;
+      engineGenRef.current += 1;
       setError(null);
       setNeedsGesture(false);
       setNeedsSound(false);
@@ -758,6 +771,15 @@ export function VideoPlayer({
       }
 
       if (engineActiveRef.current) {
+        if (engineVideoRef.current === "copy") {
+          engineVideoRef.current = "h264";
+          engineActiveRef.current = false;
+          setUsingEngine(false);
+          void window.noxDesktop?.stop?.();
+          setEngineNote("Converting video…");
+          void loadEngine();
+          return;
+        }
         engineGaveUpRef.current = true;
         engineActiveRef.current = false;
         setUsingEngine(false);
@@ -773,9 +795,19 @@ export function VideoPlayer({
       }
 
       if (!engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
+        if (engineVideoRef.current === "copy") {
+          engineVideoRef.current = "h264";
+          setEngineNote("Converting video…");
+          void loadEngine();
+          return;
+        }
         engineGaveUpRef.current = true;
-        setEngineNote("Trying another player…");
-        void loadEngine();
+        if (!vlcGaveUpRef.current && desktopHasVlc()) {
+          setEngineNote("Trying VLC…");
+          void loadVlc();
+          return;
+        }
+        loadBrowser();
         return;
       }
       if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
@@ -804,6 +836,7 @@ export function VideoPlayer({
             startAt: engineOffsetRef.current,
             audio: engineAudioRef.current,
             transcode: true,
+            video: engineVideoRef.current,
           });
           if (cancelled || gen !== engineGenRef.current) return;
           video.src = result.src;
@@ -1566,9 +1599,10 @@ export function VideoPlayer({
         </div>
       ) : null}
 
-      {!isNoxDesktop() && (needsSound || needsGesture) ? (
+      {!soundGate || isNoxDesktop() ? null : needsSound || needsGesture ? (
         <button
           type="button"
+          data-sound-gate="1"
           className="absolute inset-0 z-50 grid place-items-center bg-bg/70"
           onClick={(e) => {
             e.stopPropagation();
@@ -2475,8 +2509,15 @@ export function YouTubePlayer({
   onBack: () => void;
   extra?: ReactNode;
 }) {
-  const [active, setActive] = useState(() => isNoxDesktop());
+  const [active, setActive] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  useEffect(() => {
+    if (isNoxDesktop()) {
+      playArmed = true;
+      setActive(true);
+    }
+  }, []);
 
   return (
     <div className="relative h-dvh w-full bg-bg">
@@ -2497,6 +2538,7 @@ export function YouTubePlayer({
           />
           <button
             type="button"
+            data-sound-gate="1"
             className="absolute inset-0 z-30 grid place-items-center"
             onClick={() => {
               unlockMediaPlayback();

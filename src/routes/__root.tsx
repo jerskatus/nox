@@ -27,7 +27,7 @@ export const Route = createRootRoute({
     scripts: [
       {
         children:
-          '(function(){try{var r=localStorage.getItem("nox-settings");if(!r)return;var t=JSON.parse(r).state&&JSON.parse(r).state.theme;if(t&&t!=="nox")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
+          '(function(){try{if(/Electron|NoxDesktop/i.test(navigator.userAgent))document.documentElement.setAttribute("data-nox","app");var r=localStorage.getItem("nox-settings");if(!r)return;var t=JSON.parse(r).state&&JSON.parse(r).state.theme;if(t&&t!=="nox")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();',
       },
     ],
   }),

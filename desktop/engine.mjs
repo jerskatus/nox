@@ -155,7 +155,7 @@ function spawnFfmpeg(bin, args) {
 }
 
 export function createEngine() {
-  const bin = resolveFfmpeg();
+  let bin = resolveFfmpeg();
   /** @type {Map<string, { url: string, startAt: number, audio: number, transcode: boolean }>} */
   const jobs = new Map();
   /** @type {import('node:child_process').ChildProcess | null} */
@@ -212,7 +212,11 @@ export function createEngine() {
     args.push("-i", job.url);
     args.push("-map", "0:v:0?");
     args.push("-map", `0:a:${Math.max(0, job.audio)}`);
-    args.push("-c:v", "copy");
+    if (job.video === "h264") {
+      args.push("-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "23", "-pix_fmt", "yuv420p");
+    } else {
+      args.push("-c:v", "copy");
+    }
     if (job.transcode) {
       args.push("-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "192k");
       args.push("-af", "aresample=async=1:first_pts=0");
@@ -272,11 +276,12 @@ export function createEngine() {
     const startAt = Math.max(0, Number(opts.startAt) || 0);
     const audio = Number.isFinite(Number(opts.audio)) ? Math.max(0, Math.floor(Number(opts.audio))) : 0;
     const transcode = opts.transcode !== false;
+    const video = opts.video === "h264" ? "h264" : "copy";
     stopProc();
     jobs.clear();
     const id = randomBytes(12).toString("hex");
-    jobs.set(id, { url, startAt, audio, transcode });
-    return { src: `noxmedia://v/${id}`, transcode };
+    jobs.set(id, { url, startAt, audio, transcode, video });
+    return { src: `noxmedia://v/${id}`, transcode, video };
   }
 
   function stop() {
@@ -320,13 +325,18 @@ export function createEngine() {
   }
 
   function attach() {
+    bin = resolveFfmpeg() || bin;
     session.defaultSession.protocol.handle("noxmedia", (request) => handle(request));
     app.on("before-quit", () => stop());
   }
 
   return {
-    bin,
-    available: Boolean(bin),
+    get bin() {
+      return bin;
+    },
+    get available() {
+      return Boolean(bin);
+    },
     probe,
     play,
     stop,
