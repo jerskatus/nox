@@ -101,7 +101,8 @@ function WatchPage() {
   useEffect(() => {
     if (auto !== "1" || streamQuery.isLoading || picked) return;
     const match =
-      (rememberStream ? pickRememberedStream(ranked, pref, { desktop }) : null) ?? firstPlayableStream(ranked);
+      (rememberStream ? pickRememberedStream(ranked, pref, { desktop }) : null) ??
+      firstPlayableStream(ranked, { desktop });
     if (!match) return;
     setPicked(streamKey(match));
     setShowList(false);
@@ -135,7 +136,8 @@ function WatchPage() {
   const nextPreloadUrl = useMemo(() => {
     const nextRanked = rankStreams(nextStreamQuery.data ?? [], { desktop });
     const match =
-      (rememberStream ? pickRememberedStream(nextRanked, pref, { desktop }) : null) ?? firstPlayableStream(nextRanked);
+      (rememberStream ? pickRememberedStream(nextRanked, pref, { desktop }) : null) ??
+      firstPlayableStream(nextRanked, { desktop });
     return match?.url;
   }, [nextStreamQuery.data, pref, rememberStream, nextSubtitlesQuery.data, desktop]);
 

@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Hero } from "@/components/catalog/hero";
 import { ContinueRow } from "@/components/catalog/continue-row";
 import { ProviderRow } from "@/components/catalog/provider-row";
 import { CatalogRow } from "@/components/catalog/row";
 import { CollectionsRow } from "@/components/catalog/collections-row";
-import { TrailerModal, trailerYoutubeId } from "@/components/catalog/trailer-modal";
+import { TrailerModal } from "@/components/catalog/trailer-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchCatalog, fetchMeta, loadJsonMany } from "@/lib/stremio/client";
 import { HOME_ROWS } from "@/lib/stremio/defaults";
@@ -34,8 +34,32 @@ export const Route = createFileRoute("/")({
     });
     return { rows };
   },
+  pendingMs: 200,
+  pendingComponent: HomePending,
   component: Home,
 });
+
+function HomePending() {
+  return (
+    <main>
+      <Skeleton className="h-[min(88svh,46rem)] w-full rounded-none" />
+    </main>
+  );
+}
+
+function pickHeroItems(rows: HomeRow[]) {
+  const movies = rows.find((row) => row.key === "movies-popular")?.items ?? [];
+  const series = rows.find((row) => row.key === "series-popular")?.items ?? [];
+  const seen = new Set<string>();
+  const items: MetaPreview[] = [];
+  for (const item of [...movies, ...series]) {
+    if (!item?.id || seen.has(item.id) || !(item.background || item.poster)) continue;
+    seen.add(item.id);
+    items.push(item);
+    if (items.length >= 8) break;
+  }
+  return items;
+}
 
 function Home() {
   const { rows } = Route.useLoaderData();
@@ -44,18 +68,8 @@ function Home() {
   const progress = useLibraryStore((s) => s.progress);
   const toggleList = useLibraryStore((s) => s.toggleList);
   const resume = continueWatching(progress);
-  const [trailerOpen, setTrailerOpen] = useState(false);
-
-  const heroItem =
-    rows.find((row) => row.key === "movies-popular")?.items.find((item) => item.background || item.poster) ??
-    rows[0]?.items[0];
-
-  const heroMeta = useQuery({
-    queryKey: ["hero-meta", heroItem?.type, heroItem?.id],
-    enabled: Boolean(heroItem),
-    queryFn: () => fetchMeta(addons, heroItem!.type, heroItem!.id),
-    staleTime: 300_000,
-  });
+  const [trailer, setTrailer] = useState<{ title: string; ytId: string } | null>(null);
+  const heroItems = useMemo(() => pickHeroItems(rows), [rows]);
 
   const becauseSeed = resume[0] ?? progress[0];
   const because = useQuery({
@@ -76,20 +90,15 @@ function Home() {
     staleTime: 300_000,
   });
 
-  const trailerId = heroMeta.data ? trailerYoutubeId(heroMeta.data) : null;
-  const heroInList = heroItem ? list.some((entry) => entry.id === heroItem.id) : false;
-
-  const heroResume = heroItem ? resume.find((item) => item.id === heroItem.id) : undefined;
-
   return (
     <main>
-      {heroItem ? (
+      {heroItems.length > 0 ? (
         <Hero
-          item={heroMeta.data ?? heroItem}
-          inList={heroInList}
-          onToggleList={() => toggleList(heroItem)}
-          onTrailer={trailerId ? () => setTrailerOpen(true) : undefined}
-          resumeVideo={heroResume?.videoId}
+          items={heroItems}
+          inList={(item) => list.some((entry) => entry.id === item.id)}
+          onToggleList={toggleList}
+          onTrailer={(_item, ytId) => setTrailer({ title: _item.name, ytId })}
+          resumeFor={(item) => resume.find((entry) => entry.id === item.id)?.videoId}
         />
       ) : (
         <Skeleton className="h-[60vh] w-full rounded-none" />
@@ -124,8 +133,8 @@ function Home() {
         )}
       </div>
 
-      {trailerOpen && trailerId && heroItem ? (
-        <TrailerModal ytId={trailerId} title={heroItem.name} onClose={() => setTrailerOpen(false)} />
+      {trailer ? (
+        <TrailerModal ytId={trailer.ytId} title={trailer.title} onClose={() => setTrailer(null)} />
       ) : null}
     </main>
   );

@@ -34,6 +34,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
+    if (isWatch) return;
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+  }, [isWatch]);
+
+  useEffect(() => {
     if (!tvRemote) return;
     return startTvRemote();
   }, [tvRemote]);

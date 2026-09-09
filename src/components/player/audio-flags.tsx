@@ -27,14 +27,27 @@ export function FlagMark({
   );
 }
 
-export function FlagRow({ flags, className }: { flags: SpokenFlag[]; className?: string }) {
+export function FlagRow({
+  flags,
+  className,
+  max = 3,
+}: {
+  flags: SpokenFlag[];
+  className?: string;
+  max?: number;
+}) {
   if (flags.length === 0) return null;
+  const shown = flags.slice(0, max);
+  const extra = flags.length - shown.length;
   const label = flags.map((flag) => flag.label).join(" + ");
   return (
-    <span className={cn("inline-flex items-center gap-1", className)} title={label} aria-label={label}>
-      {flags.map((flag) => (
+    <span className={cn("inline-flex max-w-full items-center gap-1 overflow-hidden", className)} title={label} aria-label={label}>
+      {shown.map((flag) => (
         <FlagMark key={flag.code} code={flag.code} label={flag.label} />
       ))}
+      {extra > 0 ? (
+        <span className="text-2xs font-semibold tracking-wide text-muted">+{extra}</span>
+      ) : null}
     </span>
   );
 }

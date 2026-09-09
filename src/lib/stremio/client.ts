@@ -361,13 +361,19 @@ export function pickRememberedStream(
   return null;
 }
 
-export function firstPlayableStream(streams: Stream[]) {
+export function firstPlayableStream(streams: Stream[], opts?: { desktop?: boolean }) {
   const playable = streams.filter((stream) => {
     if (!isWebPlayable(stream)) return false;
     const kind = streamKind(stream);
     return kind === "http" || kind === "hls" || kind === "youtube";
   });
-  return playable.find((stream) => streamFlags(stream).spoken !== "foreign") ?? playable[0] ?? null;
+  const english = playable.filter((stream) => streamFlags(stream).spoken !== "foreign");
+  const pool = english.length > 0 ? english : playable;
+  if (!opts?.desktop) {
+    const safe = pool.filter((stream) => !streamFlags(stream).cinemaAudio);
+    if (safe.length > 0) return safe[0] ?? null;
+  }
+  return pool[0] ?? null;
 }
 
 function streamKeyOf(stream: Stream) {

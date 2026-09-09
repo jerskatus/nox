@@ -248,8 +248,9 @@ export function isForeignLabel(value?: string | null) {
 
 export function spokenFrom(text: string): SpokenLang {
   const flags = flagCodes(text);
+  const dump = flags.length > 4;
   const flagEn = flags.some((code) => EN_FLAG.has(code));
-  const flagForeign = flags.some((code) => !EN_FLAG.has(code));
+  const flagForeign = dump ? false : flags.some((code) => !EN_FLAG.has(code));
   const en = ENGLISH_AUDIO.test(text) || flagEn;
   const foreign = FOREIGN_CODE.test(text) || hasForeignName(text) || flagForeign;
   const dual = DUAL_AUDIO.test(text);
@@ -298,6 +299,26 @@ export function streamSpokenLabel(stream: Stream) {
   return null;
 }
 
+export type AudioCodecInfo = {
+  id: "atmos" | "truehd" | "dts-hd" | "dts" | "ddp" | "ac3" | "aac" | "opus" | "flac" | "mp3";
+  label: string;
+  cinema: boolean;
+};
+
+export function detectAudioCodec(text: string): AudioCodecInfo | null {
+  if (/\batmos\b/i.test(text)) return { id: "atmos", label: "Atmos", cinema: true };
+  if (/\btruehd\b/i.test(text)) return { id: "truehd", label: "TrueHD", cinema: true };
+  if (/\bdts-?hd(?:\s*ma)?\b/i.test(text)) return { id: "dts-hd", label: "DTS-HD", cinema: true };
+  if (/\bdts\b/i.test(text)) return { id: "dts", label: "DTS", cinema: true };
+  if (/\b(?:dd[p+]|ddp|e-?ac-?3|eac3)\b/i.test(text)) return { id: "ddp", label: "DD+", cinema: true };
+  if (/\b(?:ac-?3|\bdd\b|dolby\s*digital)\b/i.test(text)) return { id: "ac3", label: "AC3", cinema: true };
+  if (/\bflac\b/i.test(text)) return { id: "flac", label: "FLAC", cinema: true };
+  if (AAC_AUDIO.test(text)) return { id: "aac", label: "AAC", cinema: false };
+  if (/\bopus\b/i.test(text)) return { id: "opus", label: "Opus", cinema: false };
+  if (/\bmp3\b/i.test(text)) return { id: "mp3", label: "MP3", cinema: false };
+  return null;
+}
+
 export type StreamFlags = {
   cached: boolean;
   debrid: boolean;
@@ -309,6 +330,7 @@ export type StreamFlags = {
   cam: boolean;
   cinemaAudio: boolean;
   aac: boolean;
+  audioCodec: AudioCodecInfo | null;
   spoken: SpokenLang;
   quality: string | null;
   seeds: number | null;
@@ -323,6 +345,7 @@ export function streamFlags(stream: Stream): StreamFlags {
   if (quality && quality.endsWith("P") && quality !== "4K") quality = quality.toLowerCase();
   const seedsMatch = text.match(/(?:👤|👥|seeders?|seeds)\s*[×x:]?\s*(\d{1,6})/i);
   const cinemaAudio = CINEMA_AUDIO.test(text);
+  const audioCodec = detectAudioCodec(text);
   return {
     cached: CACHED_MARK.test(text),
     debrid: DEBRID_MARK.test(text),
@@ -334,6 +357,7 @@ export function streamFlags(stream: Stream): StreamFlags {
     cam: CAM_MARK.test(text),
     cinemaAudio,
     aac: !cinemaAudio && AAC_AUDIO.test(text),
+    audioCodec,
     spoken: spokenFrom(text),
     quality,
     seeds: seedsMatch ? Number(seedsMatch[1]) : null,
@@ -382,9 +406,9 @@ export function streamScore(stream: Stream, opts?: { desktop?: boolean }) {
   else if (kind === "external") score += 80;
   else if (kind === "torrent") score += 20;
   score += qualityScore(flags.quality);
-  if (flags.cinemaAudio && !opts?.desktop) score -= 12_000;
+  if (flags.cinemaAudio && opts?.desktop) score += 220;
   else if (flags.aac) score += 500;
-  else if (flags.cinemaAudio && opts?.desktop) score += 40;
+  else if (flags.cinemaAudio) score -= 40;
   if (AVC_VIDEO.test(text)) score += 90;
   if (flags.dolbyVision) score += 10;
   else if (flags.hdr) score += 8;
@@ -508,8 +532,16 @@ export function spokenFlagsFromText(text: string): SpokenFlag[] {
     const lang = FLAG_LANG[code] ?? code;
     out.push({ emoji, code, label: prettyLang(lang) || code.toUpperCase() });
   };
-  for (const cc of flagCodes(text)) add(cc);
+
+  const emojis = flagCodes(text);
+  if (emojis.length > 4) {
+    add(emojis.find((code) => EN_FLAG.has(code)));
+    add(emojis.find((code) => !EN_FLAG.has(code)));
+  } else {
+    for (const cc of emojis) add(cc);
+  }
   for (const token of isoLangTokens(text)) add(ccForLang(token));
+
   const compact = text.replace(/\s+/g, " ").trim();
   const labelLike = compact.length > 0 && compact.length <= 28 && !/\d{3,}/.test(compact);
   if (out.length === 0 && labelLike) {
@@ -519,7 +551,7 @@ export function spokenFlagsFromText(text: string): SpokenFlag[] {
       const coded = compact.match(FOREIGN_CODE);
       add(ccForLang(named?.[0] ?? coded?.[1] ?? coded?.[0] ?? compact));
     }
-    return out;
+    return capSpokenFlags(out, spoken);
   }
   if (out.length === 0) {
     if (spoken === "en") add("gb");
@@ -532,28 +564,50 @@ export function spokenFlagsFromText(text: string): SpokenFlag[] {
   } else if (spoken === "dual" && !out.some((flag) => EN_FLAG.has(flag.code))) {
     add("gb");
   }
-  return out;
+  return capSpokenFlags(out, spoken);
+}
+
+function capSpokenFlags(flags: SpokenFlag[], spoken: SpokenLang) {
+  if (flags.length <= 3) return flags;
+  const en = flags.filter((flag) => EN_FLAG.has(flag.code));
+  const other = flags.filter((flag) => !EN_FLAG.has(flag.code));
+  if (spoken === "dual" || spoken === "en") return [...en.slice(0, 1), ...other.slice(0, 2)].slice(0, 3);
+  return other.slice(0, 3);
 }
 
 const ISO_LANG_TOKEN = new RegExp(
-  `${TOKEN_EDGE}(gb|uk|en|eng|us|au|ca|nz|ie|ru|rus|it|ita|fr|fra|de|deu|es|spa|pt|pl|nl|jp|ja|kr|ko|cn|zh|hi|hin|ar|tr|se|sv|br|mx|cz|hu|ro|ua|gr|il|th|vn|multi)${TOKEN_END}`,
+  `${TOKEN_EDGE}(gb|uk|en|eng|us|au|ca|nz|ie|ru|rus|it|ita|fr|fra|de|deu|es|spa|pt|pl|nl|jp|ja|kr|ko|cn|zh|hi|hin|ar|tr|sv|br|mx|cz|hu|ro|ua|gr|il|th|vn)${TOKEN_END}`,
   "gi",
 );
 
 function isoLangTokens(text: string) {
   const grouped = [
     ...text.matchAll(/\[([a-z]{2,3}(?:\s*[+/|,]\s*[a-z]{2,3}){1,8})\]/gi),
-    ...text.matchAll(/\b([a-z]{2,3}(?:\s*[+/|,]\s*[a-z]{2,3}){1,8})\b/gi),
+    ...text.matchAll(/\b([a-z]{2,3}(?:\s*[+/|]\s*[a-z]{2,3}){1,8})\b/gi),
   ];
   const tokens: string[] = [];
   for (const match of grouped) {
     for (const part of (match[1] ?? "").split(/[+/|,]/)) {
       const token = part.trim();
-      if (token) tokens.push(token);
+      if (token && token.toLowerCase() !== "multi") tokens.push(token);
     }
   }
+  if (tokens.length > 4) return collapseLangList(tokens);
   if (tokens.length > 0) return tokens;
   return [...text.matchAll(ISO_LANG_TOKEN)].map((match) => match[1] ?? match[0] ?? "").filter(Boolean);
+}
+
+function collapseLangList(tokens: string[]) {
+  const en: string[] = [];
+  const other: string[] = [];
+  for (const token of tokens) {
+    const cc = ccForLang(token);
+    if (!cc) continue;
+    if (EN_FLAG.has(cc)) en.push(token);
+    else other.push(token);
+  }
+  const picked = [...en.slice(0, 1), ...other.slice(0, 1)];
+  return picked.length > 0 ? picked : tokens.slice(0, 2);
 }
 
 export function streamSpokenFlags(stream: Stream) {

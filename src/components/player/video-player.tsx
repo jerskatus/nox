@@ -802,8 +802,13 @@ export function VideoPlayer({
     const timer = window.setTimeout(() => {
       if (vlcActiveRef.current) return;
       const video = videoRef.current;
-      if (!video || video.paused || video.ended) return;
       if (!waitingRef.current) return;
+      if (!video || video.paused || video.ended) {
+        setWaiting(false);
+        setNeedsGesture(true);
+        setControls(true);
+        return;
+      }
       setError("This stream stalled.");
       onPlaybackError?.();
     }, usingEngine || usingVlc ? 22_000 : 12_000);
@@ -1005,6 +1010,10 @@ export function VideoPlayer({
             setAudioOpen(false);
             setFitOpen(false);
             setSyncState("idle");
+            break;
+          }
+          if (document.fullscreenElement) {
+            void document.exitFullscreen();
             break;
           }
           onBack();
@@ -1212,7 +1221,10 @@ export function VideoPlayer({
   useEffect(() => {
     const onFs = () => setFs(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
-    return () => document.removeEventListener("fullscreenchange", onFs);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
   }, []);
 
   const shown = activeCue(cues, time, offset);
@@ -1412,7 +1424,7 @@ export function VideoPlayer({
         }}
       />
 
-      {waiting && !error ? (
+      {waiting && !error && !needsGesture && !needsSound ? (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div className="size-12 animate-spin rounded-full border-2 border-fg/20 border-t-accent" />
         </div>
@@ -1595,7 +1607,16 @@ export function VideoPlayer({
         )}
         onPointerUp={(e) => e.stopPropagation()}
       >
-        <Button variant="ghost" size="icon" className="bg-transparent" onClick={onBack} aria-label="Back">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="bg-transparent"
+          onClick={() => {
+            if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+            onBack();
+          }}
+          aria-label="Back"
+        >
           <ArrowLeft className="size-6" />
         </Button>
         <div className="min-w-0">

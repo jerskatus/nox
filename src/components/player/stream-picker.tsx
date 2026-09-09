@@ -83,7 +83,9 @@ export function StreamPicker({
             <p className="mb-4 text-sm text-muted">
               {english.length} English source{english.length === 1 ? "" : "s"}
               {other.length > 0 ? ` · ${other.length} other language${other.length === 1 ? "" : "s"}` : ""}
-              {desktopHasEngine() ? " · desktop plays Atmos / DTS / AC3" : " · AAC sound first"}
+              {desktopHasEngine()
+                ? " · Atmos, DTS, TrueHD, and AC3 play here"
+                : " · AAC first · Atmos / DTS / TrueHD in the Windows app"}
             </p>
             {preferred ? (
               <button
@@ -91,11 +93,13 @@ export function StreamPicker({
                 onClick={() => onPick(preferred)}
                 className="mb-6 flex w-full items-center gap-4 rounded-lg bg-fg px-4 py-3.5 text-left text-bg touch-manipulation"
               >
-                <span className="w-16 shrink-0 sm:w-24">
+                <span className="w-16 shrink-0 overflow-hidden sm:w-24">
                   <span className="flex items-center gap-1.5">
                     <span className="text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
                       {streamQuality(preferred) ?? "Play"}
                     </span>
+                  </span>
+                  <span className="mt-1 flex min-w-0 items-center gap-1">
                     <AudioFlags stream={preferred} />
                   </span>
                   <span className="mt-1 block text-2xs font-semibold uppercase tracking-wide opacity-70">Last used</span>
@@ -257,10 +261,11 @@ function groupByLanguage(streams: Stream[]) {
 
 function streamSoundLine(stream: Stream) {
   const flags = streamFlags(stream);
+  const codec = flags.audioCodec;
   const bits = [
     streamSpokenLabel(stream),
-    flags.aac ? "AAC" : flags.cinemaAudio ? (flags.atmos ? "Atmos" : "DD") : null,
-    flags.cinemaAudio ? (desktopHasEngine() ? "plays in the app" : "silent in browser") : null,
+    codec?.label ?? null,
+    codec?.cinema ? (desktopHasEngine() ? "plays in the app" : "Windows app") : null,
     flags.cached ? "Cached" : flags.debrid ? "Debrid" : null,
     flags.dolbyVision ? "DV" : flags.hdr ? "HDR" : null,
   ].filter(Boolean);
@@ -287,7 +292,7 @@ function StreamChoice({
   const label = stream.addonName || stream.name || details[0] || "Stream";
   const headline = quality ?? (playable ? "Play" : kind === "torrent" ? "Torrent" : kind === "external" ? "Open" : "Stream");
   const sound = streamSoundLine(stream);
-  const silent = flags.cinemaAudio && !flags.aac && !desktopHasEngine();
+  const cinema = Boolean(flags.audioCodec?.cinema);
 
   return (
     <li className="min-w-0">
@@ -295,15 +300,15 @@ function StreamChoice({
         type="button"
         onClick={onPick}
         className={cn(
-          "flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-left shadow-[var(--shadow-border)] transition-[background-color] duration-150 touch-manipulation sm:gap-4",
+          "flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-lg px-3 py-3 text-left shadow-[var(--shadow-border)] transition-[background-color] duration-150 touch-manipulation sm:gap-4",
           active ? "bg-elevated" : "bg-surface hover:bg-elevated",
         )}
       >
-        <span className="w-16 shrink-0 sm:w-24">
-          <span className="flex items-center gap-1.5">
-            <span className="text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
-              {headline}
-            </span>
+        <span className="w-[4.25rem] shrink-0 overflow-hidden sm:w-24">
+          <span className="block text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
+            {headline}
+          </span>
+          <span className="mt-1 flex min-w-0 items-center gap-1">
             <AudioFlags stream={stream} />
           </span>
           {size ? <span className="mt-1 block text-2xs text-muted">{size}</span> : null}
@@ -311,13 +316,23 @@ function StreamChoice({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="truncate font-medium">{label}</span>
+            {flags.audioCodec ? (
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide",
+                  cinema ? "bg-fg/10 text-fg" : "bg-elevated text-muted",
+                )}
+              >
+                {flags.audioCodec.label}
+              </span>
+            ) : null}
             {preferred ? (
               <span className="rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-fg">
                 Last used
               </span>
             ) : null}
           </span>
-          <span className={cn("mt-0.5 block truncate text-xs", silent ? "text-subtle" : "text-muted")}>
+          <span className="mt-0.5 block truncate text-xs text-muted">
             {sound || details.slice(0, 2).join(" · ") || kind}
           </span>
         </span>
@@ -341,5 +356,5 @@ function StreamChoice({
 }
 
 function AudioFlags({ stream }: { stream: Stream }) {
-  return <FlagRow flags={streamSpokenFlags(stream)} />;
+  return <FlagRow flags={streamSpokenFlags(stream)} max={2} />;
 }
