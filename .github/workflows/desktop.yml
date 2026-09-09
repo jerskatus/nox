@@ -8,7 +8,9 @@ on:
     branches: [main]
     paths:
       - desktop/**
+      - src/**
       - scripts/build-desktop-catalog.mjs
+      - scripts/fetch-libvlc.mjs
       - .github/workflows/desktop.yml
 
 permissions:
@@ -53,6 +55,9 @@ jobs:
       - name: Install desktop
         working-directory: desktop
         run: npm ci
+      - name: Bundle libVLC
+        if: runner.os == 'Windows'
+        run: node scripts/fetch-libvlc.mjs
       - name: Package
         working-directory: desktop
         run: npx electron-builder ${{ matrix.args }} --publish never
@@ -83,6 +88,8 @@ jobs:
           name: Nox ${{ needs.version.outputs.version }}
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
+
+            Windows now plays inside a built-in VLC engine, so Atmos / DTS / AC3 / TrueHD make sound without converting. Nox chrome (subtitles, skip intro, next episode) stays on top.
 
             After this install, new versions download themselves. You’ll get a restart prompt when one is ready.
 

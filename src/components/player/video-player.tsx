@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { type PointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { desktopHasEngine, type DesktopAudioTrack } from "@/lib/desktop";
+import { desktopHasEngine, desktopHasVlc, type DesktopAudioTrack } from "@/lib/desktop";
 import { isEnglishLabel, isForeignLabel, spokenFlagsFromText, type SpokenFlag } from "@/lib/stremio/stream-rank";
 import { FlagRow } from "./audio-flags";
 import { loadSubtitleFile } from "@/lib/stremio/client";
@@ -75,7 +75,7 @@ type AudioChoice = {
   codec: string;
   channels: string;
   isDefault: boolean;
-  source: "hls" | "native" | "engine";
+  source: "hls" | "native" | "engine" | "vlc";
   cinema?: boolean;
 };
 
@@ -146,6 +146,7 @@ export function VideoPlayer({
   audioHintsRef.current = audioHints;
   const [selectedAudio, setSelectedAudio] = useState(0);
   const [usingEngine, setUsingEngine] = useState(false);
+  const [usingVlc, setUsingVlc] = useState(false);
   const [engineNote, setEngineNote] = useState<string | null>(null);
   const userPickedAudio = useRef(false);
   const preferredAudioRef = useRef(preferredAudioLang);
@@ -189,6 +190,8 @@ export function VideoPlayer({
   const engineDurationRef = useRef(0);
   const engineAudioRef = useRef(0);
   const engineActiveRef = useRef(false);
+  const vlcActiveRef = useRef(false);
+  const vlcTimeRef = useRef(0);
   const engineSwapRef = useRef(false);
   const engineGenRef = useRef(0);
   const engineSeekTimer = useRef<number | null>(null);
@@ -228,6 +231,15 @@ export function VideoPlayer({
     const volume = useSettingsStore.getState().volume || 1;
     setPlayerMuted(false);
     playerMutedRef.current = false;
+    if (vlcActiveRef.current) {
+      void window.noxDesktop?.vlcVolume?.({ volume, mute: false });
+      void window.noxDesktop?.vlcResume?.();
+      setPlaying(true);
+      pendingSound.current = false;
+      setNeedsSound(false);
+      setNeedsGesture(false);
+      return;
+    }
     if (video) {
       video.defaultMuted = false;
       video.muted = false;
@@ -243,6 +255,7 @@ export function VideoPlayer({
   }, []);
 
   const mediaTime = useCallback(() => {
+    if (vlcActiveRef.current) return vlcTimeRef.current;
     const video = videoRef.current;
     if (!video) return engineOffsetRef.current;
     if (engineActiveRef.current) {
@@ -259,6 +272,11 @@ export function VideoPlayer({
       (video && Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0);
     const next = Math.max(0, cap > 0 ? Math.min(absolute, Math.max(0, cap - 0.35)) : absolute);
     setTime(next);
+    if (vlcActiveRef.current) {
+      vlcTimeRef.current = next;
+      void window.noxDesktop?.vlcSeek?.(Math.round(next * 1000));
+      return;
+    }
     if (!engineActiveRef.current) {
       if (video && Number.isFinite(next)) video.currentTime = next;
       return;
@@ -281,6 +299,10 @@ export function VideoPlayer({
       setSelectedAudio(choice?.index ?? index);
       onAudioChange?.(lang);
       bumpControls();
+      if (vlcActiveRef.current) {
+        void window.noxDesktop?.vlcAudio?.(choice?.index ?? index);
+        return;
+      }
       if (engineActiveRef.current) {
         engineAudioRef.current = choice?.index ?? index;
         seekMedia(mediaTime(), true);
@@ -396,6 +418,7 @@ export function VideoPlayer({
     setNeedsSound(false);
     setNeedsGesture(false);
     setUsingEngine(false);
+    setUsingVlc(false);
     setEngineNote(null);
     pendingSound.current = false;
     started.current = false;
@@ -409,6 +432,8 @@ export function VideoPlayer({
     setAudioOpen(false);
     hlsRef.current = null;
     engineActiveRef.current = false;
+    vlcActiveRef.current = false;
+    vlcTimeRef.current = 0;
     engineOffsetRef.current = 0;
     engineDurationRef.current = 0;
     engineAudioRef.current = 0;
@@ -611,6 +636,67 @@ export function VideoPlayer({
       }
     };
 
+    const loadVlc = async () => {
+      const api = window.noxDesktop;
+      if (!api?.vlcPlay) {
+        if (desktopHasEngine() && kind !== "hls") void loadEngine();
+        else loadBrowser();
+        return;
+      }
+      setEngineNote("Starting VLC…");
+      const gen = engineGenRef.current;
+      const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
+      vlcTimeRef.current = startAt;
+      setTime(startAt);
+      try {
+        const wrap = wrapRef.current?.getBoundingClientRect();
+        const result = await api.vlcPlay({
+          url: src,
+          startAt,
+          volume: useSettingsStore.getState().volume || 1,
+          mute: playerMutedRef.current,
+          rate,
+          fit: useSettingsStore.getState().videoFit,
+          bounds: wrap
+            ? { x: wrap.x, y: wrap.y, width: wrap.width, height: wrap.height }
+            : undefined,
+        });
+        if (cancelled || gen !== engineGenRef.current) return;
+        vlcActiveRef.current = true;
+        setUsingVlc(true);
+        setUsingEngine(false);
+        engineDurationRef.current = (Number(result.length) || 0) / 1000;
+        if (engineDurationRef.current > 0) setDuration(engineDurationRef.current);
+        const tracks = mapVlcTracks(result.tracks ?? []);
+        const list = mergeHintTracks(tracks.length ? tracks : originalTrack().map((t) => ({ ...t, source: "vlc" as const })), audioHintsRef.current);
+        engineTracksRef.current = list;
+        setAudioTracks(list);
+        const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
+        const picked = list[pickBestAudioIndex(list, remembered)] ?? list[0];
+        if (picked) {
+          setSelectedAudio(picked.index);
+          void api.vlcAudio?.(picked.index);
+        }
+        setEngineNote("VLC · original soundtrack");
+        window.setTimeout(() => {
+          if (!cancelled) setEngineNote(null);
+        }, 3200);
+        setWaiting(false);
+        setPlaying(true);
+        started.current = true;
+        playArmed = true;
+        setNeedsGesture(false);
+        setNeedsSound(false);
+      } catch {
+        if (cancelled || gen !== engineGenRef.current) return;
+        vlcActiveRef.current = false;
+        setUsingVlc(false);
+        setEngineNote(null);
+        if (desktopHasEngine() && kind !== "hls") void loadEngine();
+        else loadBrowser();
+      }
+    };
+
     engineRestartRef.current = (startAt: number) => {
       void (async () => {
         const api = window.noxDesktop;
@@ -639,7 +725,8 @@ export function VideoPlayer({
       })();
     };
 
-    if (desktopHasEngine() && kind !== "hls") void loadEngine();
+    if (desktopHasVlc()) void loadVlc();
+    else if (desktopHasEngine() && kind !== "hls") void loadEngine();
     else loadBrowser();
 
     const syncNativeAudio = () => {
@@ -701,6 +788,7 @@ export function VideoPlayer({
       hlsRef.current = null;
       video.removeAttribute("src");
       video.load();
+      void window.noxDesktop?.vlcStop?.();
       void window.noxDesktop?.stop?.();
       if (graphRef.current) {
         void graphRef.current.ctx.close().catch(() => undefined);
@@ -712,14 +800,15 @@ export function VideoPlayer({
   useEffect(() => {
     if (!waiting || error) return;
     const timer = window.setTimeout(() => {
+      if (vlcActiveRef.current) return;
       const video = videoRef.current;
       if (!video || video.paused || video.ended) return;
       if (!waitingRef.current) return;
       setError("This stream stalled.");
       onPlaybackError?.();
-    }, usingEngine ? 22_000 : 12_000);
+    }, usingEngine || usingVlc ? 22_000 : 12_000);
     return () => window.clearTimeout(timer);
-  }, [waiting, error, src, onPlaybackError, usingEngine]);
+  }, [waiting, error, src, onPlaybackError, usingEngine, usingVlc]);
 
   useEffect(() => {
     if (error || waiting) return;
@@ -731,6 +820,7 @@ export function VideoPlayer({
     if (error || waiting) return;
     silentTries.current = 0;
     const timer = window.setInterval(() => {
+      if (vlcActiveRef.current) return;
       const video = videoRef.current;
       if (!video || video.paused || video.ended) return;
       if (playerMutedRef.current) return;
@@ -797,13 +887,21 @@ export function VideoPlayer({
   }, [src, error, waiting, onSilentAudio, onPlaybackError]);
 
   useEffect(() => {
+    if (vlcActiveRef.current) {
+      void window.noxDesktop?.vlcRate?.(rate);
+      void window.noxDesktop?.vlcVolume?.({
+        volume: volume <= 0 ? 1 : volume,
+        mute: playerMuted,
+      });
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     video.playbackRate = rate;
     video.volume = volume <= 0 ? 1 : volume;
     video.muted = playerMuted;
     if (!playerMuted) video.defaultMuted = false;
-  }, [rate, volume, playerMuted]);
+  }, [rate, volume, playerMuted, usingVlc]);
 
   useEffect(() => {
     const onVis = () => {
@@ -817,7 +915,7 @@ export function VideoPlayer({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const video = videoRef.current;
-      if (!video) return;
+      if (!video && !vlcActiveRef.current) return;
       const tag = (event.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       bumpControls();
@@ -825,12 +923,18 @@ export function VideoPlayer({
         case " ":
         case "k":
           event.preventDefault();
-          if (pendingSound.current || needsGesture || video.muted) {
+          if (pendingSound.current || needsGesture || (!vlcActiveRef.current && video?.muted)) {
             unlockSound();
-            if (!video.paused) break;
+            if (vlcActiveRef.current ? playing : video && !video.paused) break;
           }
-          if (video.paused) void video.play();
-          else video.pause();
+          if (vlcActiveRef.current) {
+            if (playing) void window.noxDesktop?.vlcPause?.();
+            else void window.noxDesktop?.vlcResume?.();
+            setPlaying((v) => !v);
+            break;
+          }
+          if (video?.paused) void video.play();
+          else video?.pause();
           break;
         case "ArrowLeft":
         case "j":
@@ -888,10 +992,11 @@ export function VideoPlayer({
           break;
         case "m":
           event.preventDefault();
-          if (pendingSound.current || video.muted || playerMuted) unlockSound();
+          if (pendingSound.current || (!vlcActiveRef.current && video?.muted) || playerMuted) unlockSound();
           else {
             setPlayerMuted(true);
-            video.muted = true;
+            if (video) video.muted = true;
+            if (vlcActiveRef.current) void window.noxDesktop?.vlcVolume?.({ volume, mute: true });
           }
           break;
         case "Escape":
@@ -925,6 +1030,8 @@ export function VideoPlayer({
     selectAudioTrack,
     seekMedia,
     mediaTime,
+    playing,
+    volume,
   ]);
 
   function cycleVideoFit() {
@@ -937,6 +1044,14 @@ export function VideoPlayer({
   function applyVideoFit(next: VideoFit) {
     useSettingsStore.getState().setVideoFit(next);
     setFitFlash(next);
+    if (vlcActiveRef.current) {
+      const wrap = wrapRef.current?.getBoundingClientRect();
+      void window.noxDesktop?.vlcFit?.({
+        fit: next,
+        width: wrap?.width,
+        height: wrap?.height,
+      });
+    }
   }
 
   function toggleFs() {
@@ -947,6 +1062,18 @@ export function VideoPlayer({
   }
 
   function togglePlay() {
+    if (vlcActiveRef.current) {
+      if (pendingSound.current || needsGesture) unlockSound();
+      if (playing) {
+        void window.noxDesktop?.vlcPause?.();
+        setPlaying(false);
+        setControls(true);
+      } else {
+        void window.noxDesktop?.vlcResume?.();
+        setPlaying(true);
+      }
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     if (pendingSound.current || needsGesture || video.muted) {
@@ -1007,7 +1134,7 @@ export function VideoPlayer({
 
   async function runSync() {
     const video = videoRef.current;
-    if (!video || cues.length === 0 || syncing.current) return;
+    if ((!video && !vlcActiveRef.current) || cues.length === 0 || syncing.current) return;
     syncing.current = true;
     freezeRef.current = true;
     setAudioOpen(false);
@@ -1022,9 +1149,10 @@ export function VideoPlayer({
     if (next && next.start - (now() + offset) > 10) {
       seekMedia(Math.max(0, next.start - 1.6), true);
     }
-    if (video.paused) void video.play().catch(() => undefined);
+    if (vlcActiveRef.current) void window.noxDesktop?.vlcResume?.();
+    else if (video?.paused) void video.play().catch(() => undefined);
 
-    const graph = ensureAnalyser(video);
+    const graph = video ? ensureAnalyser(video) : null;
     if (graph?.ctx.state === "suspended") await graph.ctx.resume().catch(() => undefined);
 
     const raw: Array<{ t: number; rms: number }> = [];
@@ -1060,8 +1188,7 @@ export function VideoPlayer({
   }
 
   function confirmTap() {
-    const video = videoRef.current;
-    if (!video || !tapCue) return;
+    if (!tapCue) return;
     const next = Math.round((tapCue.start - mediaTime()) * 20) / 20;
     setOffset(next);
     setSyncState("done");
@@ -1099,8 +1226,6 @@ export function VideoPlayer({
     Boolean(onNext) && autoplayNext && !holdNext && duration > 180 && remaining > 0.35 && remaining <= 15;
 
   function skipIntro() {
-    const video = videoRef.current;
-    if (!video) return;
     const to = introSkipTo && introSkipTo > 20 ? introSkipTo : 85;
     seekMedia(Math.min(to, Math.max(0, (duration || to) - 1)), true);
     setSkippedIntro(true);
@@ -1117,18 +1242,107 @@ export function VideoPlayer({
   const currentAudio = audioTracks.find((t) => t.index === selectedAudio) ?? audioTracks[0];
   const cinemaSelected = currentAudio ? isCinemaAudio(currentAudio) : false;
   const banner = statusNote || engineNote;
+  const vlcOn = usingVlc;
+
+  useEffect(() => {
+    if (!vlcOn) {
+      delete document.documentElement.dataset.vlc;
+      return;
+    }
+    document.documentElement.dataset.vlc = "1";
+    return () => {
+      delete document.documentElement.dataset.vlc;
+    };
+  }, [vlcOn]);
+
+  useEffect(() => {
+    if (!desktopHasVlc()) return;
+    const stop = window.noxDesktop?.onVlcEvent?.((payload) => {
+      if (!vlcActiveRef.current) return;
+      if (payload.evt !== "state") return;
+      if (typeof payload.time === "number" && payload.time >= 0) {
+        const seconds = payload.time / 1000;
+        vlcTimeRef.current = seconds;
+        setTime(seconds);
+      }
+      if (typeof payload.length === "number" && payload.length > 0) {
+        engineDurationRef.current = payload.length / 1000;
+        setDuration(payload.length / 1000);
+      }
+      if (typeof payload.playing === "boolean") setPlaying(payload.playing);
+      if (payload.buffering) setWaiting(true);
+      else if (payload.playing) setWaiting(false);
+      if (payload.tracks && payload.tracks.length > 1 && payload.tracks.length !== engineTracksRef.current.length) {
+        const mapped = mapVlcTracks(payload.tracks);
+        engineTracksRef.current = mapped;
+        setAudioTracks(mapped);
+        if (!userPickedAudio.current) {
+          const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
+          const picked = mapped[pickBestAudioIndex(mapped, remembered)] ?? mapped[0];
+          if (picked) {
+            setSelectedAudio(picked.index);
+            void window.noxDesktop?.vlcAudio?.(picked.index);
+          }
+        }
+      }
+      if (payload.error) {
+        setError("Playback failed. Try another stream.");
+        onPlaybackError?.();
+      }
+      if (payload.ended) {
+        onEnded?.();
+        if (autoplayNext && onNext && !holdNext && !nextLock.current) {
+          nextLock.current = true;
+          onNext();
+        }
+      }
+      const d = engineDurationRef.current;
+      onProgress(vlcTimeRef.current, d || 0);
+    });
+    return () => {
+      stop?.();
+    };
+  }, [src, autoplayNext, onNext, onEnded, onPlaybackError, onProgress]);
+
+  useEffect(() => {
+    if (!usingVlc) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const send = () => {
+      const rect = wrap.getBoundingClientRect();
+      void window.noxDesktop?.vlcBounds?.({
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+    send();
+    const observer = new ResizeObserver(send);
+    observer.observe(wrap);
+    window.addEventListener("resize", send);
+    document.addEventListener("fullscreenchange", send);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", send);
+      document.removeEventListener("fullscreenchange", send);
+    };
+  }, [usingVlc]);
 
   return (
     <div
       ref={wrapRef}
       data-player="1"
-      className="relative h-dvh w-full overflow-hidden bg-bg touch-manipulation"
+      className={cn(
+        "relative h-dvh w-full overflow-hidden touch-manipulation",
+        vlcOn ? "bg-transparent" : "bg-bg",
+      )}
       onPointerMove={onSurfacePointer}
       onPointerUp={onSurfacePointer}
     >
       <video
         ref={videoRef}
-        className={cn("player-video", `player-video-${videoFit}`)}
+        className={cn("player-video", `player-video-${videoFit}`, vlcOn && "invisible")}
         poster={poster}
         playsInline
         preload="auto"
@@ -1433,17 +1647,20 @@ export function VideoPlayer({
                           <span className="block truncate text-sm font-medium">{audioTrackTitle(track)}</span>
                         </span>
                         <span className={cn("block truncate text-xs", on ? "text-bg/70" : "text-muted")}>
-                          {audioTrackMeta(track, usingEngine)}
+                          {audioTrackMeta(track, usingEngine && !usingVlc)}
                         </span>
                       </span>
-                      {cinema && !usingEngine ? (
+                      {cinema && usingVlc ? (
                         <span className={cn("shrink-0 text-2xs font-semibold uppercase tracking-wide", on ? "text-bg/70" : "text-subtle")}>
-                          May be silent
+                          Cinema
                         </span>
-                      ) : null}
-                      {cinema && usingEngine ? (
+                      ) : cinema && usingEngine ? (
                         <span className={cn("shrink-0 text-2xs font-semibold uppercase tracking-wide", on ? "text-bg/70" : "text-subtle")}>
                           Converted
+                        </span>
+                      ) : cinema ? (
+                        <span className={cn("shrink-0 text-2xs font-semibold uppercase tracking-wide", on ? "text-bg/70" : "text-subtle")}>
+                          May be silent
                         </span>
                       ) : null}
                     </button>
@@ -1451,7 +1668,11 @@ export function VideoPlayer({
                 })}
               </div>
             )}
-            {usingEngine ? (
+            {usingVlc ? (
+              <p className="mt-2 text-xs text-muted">
+                Atmos, DTS, and AC3 play in original quality. Changing tracks does not restart.
+              </p>
+            ) : usingEngine ? (
               <p className="mt-2 text-xs text-muted">
                 Atmos, DTS, and AC3 play here as AAC stereo. Changing tracks restarts from this position.
               </p>
@@ -1941,6 +2162,20 @@ function mergeHintTracks(tracks: AudioChoice[], hints: SpokenFlag[]): AudioChoic
   return [{ ...track, lang: track.lang || hint.code, name: isGenericAudioName(track.name) ? hint.label : track.name }];
 }
 
+function mapVlcTracks(tracks: DesktopAudioTrack[]): AudioChoice[] {
+  return tracks.map((t) => ({
+    id: `vlc-${t.index}-${t.lang}-${t.codec}`,
+    index: t.index,
+    name: t.title || t.name || t.lang || t.codec || `Track ${t.index}`,
+    lang: t.lang,
+    codec: t.codec,
+    channels: t.channels,
+    isDefault: Boolean(t.isDefault),
+    source: "vlc",
+    cinema: t.cinema,
+  }));
+}
+
 function mapEngineTracks(tracks: DesktopAudioTrack[]): AudioChoice[] {
   return tracks.map((t) => ({
     id: `engine-${t.index}-${t.lang}-${t.codec}`,
@@ -1986,7 +2221,7 @@ function scoreAudioTrack(track: AudioChoice, preferred?: string | null) {
   if (isEnglishLabel(track.lang) || isEnglishLabel(track.name)) score += 120;
   if (isForeignLabel(track.lang) || isForeignLabel(track.name)) score -= 90;
   if (preferred && (langsMatch(track.lang, preferred) || langsMatch(track.name, preferred))) score += 50;
-  if (track.source !== "engine" && isCinemaAudio(track)) score -= 20;
+  if (track.source !== "engine" && track.source !== "vlc" && isCinemaAudio(track)) score -= 20;
   if (/mp4a|aac/.test(blob)) score += 20;
   if (track.channels === "2" || track.channels.startsWith("2.")) score += 4;
   if (track.isDefault && (isEnglishLabel(track.lang) || isEnglishLabel(track.name))) score += 6;

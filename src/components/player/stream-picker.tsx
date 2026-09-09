@@ -83,7 +83,7 @@ export function StreamPicker({
             <p className="mb-4 text-sm text-muted">
               {english.length} English source{english.length === 1 ? "" : "s"}
               {other.length > 0 ? ` · ${other.length} other language${other.length === 1 ? "" : "s"}` : ""}
-              {desktopHasEngine() ? " · desktop converts Atmos / DTS / AC3" : " · AAC sound first"}
+              {desktopHasEngine() ? " · desktop plays Atmos / DTS / AC3" : " · AAC sound first"}
             </p>
             {preferred ? (
               <button
@@ -260,7 +260,7 @@ function streamSoundLine(stream: Stream) {
   const bits = [
     streamSpokenLabel(stream),
     flags.aac ? "AAC" : flags.cinemaAudio ? (flags.atmos ? "Atmos" : "DD") : null,
-    flags.cinemaAudio ? (desktopHasEngine() ? "converted in app" : "silent in browser") : null,
+    flags.cinemaAudio ? (desktopHasEngine() ? "plays in the app" : "silent in browser") : null,
     flags.cached ? "Cached" : flags.debrid ? "Debrid" : null,
     flags.dolbyVision ? "DV" : flags.hdr ? "HDR" : null,
   ].filter(Boolean);

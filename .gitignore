@@ -20,3 +20,5 @@ desktop/node_modules
 desktop/dist
 desktop/out
 desktop/app
+desktop/vlc
+desktop/.vlc-fetch

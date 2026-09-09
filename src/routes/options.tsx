@@ -224,7 +224,8 @@ function DesktopSection() {
             </p>
             <p className="mt-2 text-sm text-muted">
               This copy runs on your computer — no website required. New versions download themselves; Nox asks to
-              restart when one is ready. Atmos, DTS, and AC3 are converted to AAC stereo so they make sound.
+              restart when one is ready. Windows uses a built-in VLC engine so Atmos, DTS, and AC3 play as they
+              were mixed.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
@@ -244,8 +245,8 @@ function DesktopSection() {
           <>
             <p className="font-medium">Nox on your computer</p>
             <p className="mt-2 mb-4 text-sm text-muted">
-              Install Nox 1.2 or newer for a Windows app that does not need the website. After that, updates install
-              themselves. Cinema audio (Atmos / DTS / AC3) plays as AAC stereo.
+              Install Nox 1.3 or newer for a Windows app that does not need the website. After that, updates install
+              themselves. Cinema audio (Atmos / DTS / AC3) plays through the built-in VLC engine.
             </p>
             <Button asChild variant="play">
               <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">

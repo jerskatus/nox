@@ -258,6 +258,9 @@ html[data-theme="gold"] {
     transform: scale(1.34);
     transform-origin: center center;
   }
+  html[data-vlc] body {
+    background-color: transparent;
+  }
   @media (prefers-reduced-motion: reduce) {
     .player-video {
       transition: none;

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createEngine, registerPrivilegedSchemes } from "./engine.mjs";
 import { hasLocalCatalog, startCatalog, stopCatalog } from "./catalog.mjs";
 import { attachUpdater, checkForUpdates, installUpdate } from "./updater.mjs";
+import { createVlc } from "./vlc.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 registerPrivilegedSchemes();
@@ -101,6 +102,7 @@ function attachWindow(next) {
 
 function createWindow() {
   const stored = loadBounds();
+  const transparent = process.platform === "win32";
   const next = new BrowserWindow({
     width: stored.width,
     height: stored.height,
@@ -108,7 +110,8 @@ function createWindow() {
     y: stored.y,
     minWidth: 1024,
     minHeight: 640,
-    backgroundColor: "#000000",
+    backgroundColor: transparent ? "#00000000" : "#000000",
+    transparent,
     autoHideMenuBar: true,
     title: "Nox",
     icon: existsSync(join(root, "icon.png")) ? join(root, "icon.png") : undefined,
@@ -123,6 +126,10 @@ function createWindow() {
   });
   if (stored.isMaximized) next.maximize();
   attachWindow(next);
+  vlc.attach(next, (payload) => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("nox:vlc-event", payload);
+  });
   if (startUrl) {
     void next.loadURL(startUrl, { extraHeaders: "Cache-Control: no-cache\n" });
   } else {
@@ -204,8 +211,12 @@ async function bootCatalog() {
 app.setName("Nox");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("lang", "en-US");
+if (process.platform === "win32") {
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+}
 
 const engine = createEngine();
+const vlc = createVlc();
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -222,21 +233,37 @@ if (!gotLock) {
     attachUpdater();
     ipcMain.handle("nox:info", () => ({
       version: app.getVersion(),
-      hasEngine: engine.available,
+      hasEngine: engine.available || vlc.available,
+      hasVlc: vlc.available,
       standalone: Boolean(catalog) || hasLocalCatalog(),
     }));
     ipcMain.handle("nox:probe", (_event, url) => engine.probe(String(url ?? "")));
-    ipcMain.handle("nox:play", (_event, opts) =>
-      engine.play({
+    ipcMain.handle("nox:play", (_event, opts) => {
+      void vlc.stop();
+      return engine.play({
         url: String(opts?.url ?? ""),
         startAt: Number(opts?.startAt) || 0,
         audio: Number.isFinite(Number(opts?.audio)) ? Math.max(0, Math.floor(Number(opts.audio))) : 0,
         transcode: opts?.transcode !== false,
-      }),
-    );
+      });
+    });
     ipcMain.handle("nox:stop", () => {
       engine.stop();
+      void vlc.stop();
     });
+    ipcMain.handle("nox:vlc-play", (_event, opts) => {
+      engine.stop();
+      return vlc.play(opts ?? {});
+    });
+    ipcMain.handle("nox:vlc-pause", () => vlc.pause());
+    ipcMain.handle("nox:vlc-resume", () => vlc.resume());
+    ipcMain.handle("nox:vlc-stop", () => vlc.stop());
+    ipcMain.handle("nox:vlc-seek", (_event, ms) => vlc.seek(ms));
+    ipcMain.handle("nox:vlc-volume", (_event, opts) => vlc.setVolume(opts?.volume, opts?.mute));
+    ipcMain.handle("nox:vlc-rate", (_event, rate) => vlc.setRate(rate));
+    ipcMain.handle("nox:vlc-audio", (_event, track) => vlc.setAudio(track));
+    ipcMain.handle("nox:vlc-fit", (_event, opts) => vlc.setFit(opts?.fit, opts?.width, opts?.height));
+    ipcMain.handle("nox:vlc-bounds", (_event, bounds) => vlc.setBounds(bounds));
     ipcMain.handle("nox:update-check", () => checkForUpdates({ silent: false }));
     ipcMain.handle("nox:update-install", () => {
       installUpdate();
