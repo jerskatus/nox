@@ -128,6 +128,17 @@ declare global {
   }
 }
 
+export function applyUpdateResult(
+  prev: DesktopUpdateStatus,
+  result: DesktopUpdateStatus,
+): DesktopUpdateStatus {
+  const next = { ...prev, ...result };
+  if (next.status === "idle" && !result.message) {
+    return { ...next, message: "Nox is up to date." };
+  }
+  return { ...next, message: updateStatusLabel(next) || prev.message };
+}
+
 export function isNoxDesktop() {
   return typeof window !== "undefined" && Boolean(window.noxDesktop);
 }

@@ -62,6 +62,11 @@ export function Nav() {
     void navigate({ to: "/search", search: { q: "" } });
   }
 
+  function goSettings() {
+    setOpen(false);
+    void navigate({ to: "/options" });
+  }
+
   return (
     <>
       <header
@@ -95,15 +100,16 @@ export function Nav() {
             </Button>
             <Button
               variant="ghost"
-              size="icon-sm"
-              className="bg-transparent hover:bg-fg/10"
-              aria-label="Options"
-              onClick={() => {
-                setOpen(false);
-                void navigate({ to: "/options" });
-              }}
+              className={cn(
+                "bg-transparent px-3 hover:bg-fg/10",
+                pathname === "/options" ? "text-fg" : "text-muted",
+              )}
+              aria-label="Settings"
+              aria-current={pathname === "/options" ? "page" : undefined}
+              onClick={goSettings}
             >
               <Settings className="size-5" />
+              <span className="hidden sm:inline">Settings</span>
             </Button>
             <Button
               variant="ghost"
@@ -148,7 +154,7 @@ export function Nav() {
               )}
             >
               <Settings className="size-5" />
-              Options
+              Settings
             </Link>
           </nav>
         </div>

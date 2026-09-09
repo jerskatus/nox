@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.5 puts a Check for updates button at the top of Options. Tap it any time; if a version is ready, Install and restart is right there.
+            1.3.6 puts a Check for updates button at the top of Settings. Open Settings from the header, tap the button, and Install and restart if a version is ready.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

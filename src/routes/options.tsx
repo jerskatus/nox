@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DESKTOP_RELEASES_URL,
+  applyUpdateResult,
   fetchLatestDesktopRelease,
   isNoxDesktop,
   updateStatusLabel,
@@ -54,8 +55,8 @@ function OptionsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-20 pt-[calc(var(--header-h)+0.75rem)] sm:px-8">
-      <h1 className="text-3xl font-semibold">Options</h1>
-      <p className="mt-2 mb-10 text-muted">Playback, search, and how Nox looks.</p>
+      <h1 className="text-3xl font-semibold">Settings</h1>
+      <p className="mt-2 mb-10 text-muted">Updates, playback, search, and how Nox looks.</p>
 
       <UpdatesSection />
 
@@ -220,22 +221,22 @@ function UpdatesSection() {
       setStatus(payload);
       setBusy(payload.status === "checking" || payload.status === "downloading");
     });
+    if (api?.checkForUpdates) {
+      void runCheck();
+    }
     return () => {
       stop?.();
     };
   }, []);
 
-  async function onCheck() {
+  async function runCheck() {
     setBusy(true);
     setStatus({ status: "checking", message: "Checking for updates…" });
     try {
       if (window.noxDesktop?.checkForUpdates) {
         const result = await window.noxDesktop.checkForUpdates();
         if (result) {
-          setStatus((prev) => {
-            const next = { ...prev, ...result };
-            return { ...next, message: updateStatusLabel(next) || prev.message };
-          });
+          setStatus((prev) => applyUpdateResult(prev, result));
         }
         return;
       }
@@ -249,59 +250,62 @@ function UpdatesSection() {
 
   const note = updateStatusLabel(status);
   const ready = status.status === "ready";
+  const heading = version ? `Nox ${version}` : desktop ? "Nox for Windows" : "Nox app";
   const hint = desktop
-    ? version
-      ? `This copy is Nox ${version}. New versions download themselves — you can also check now.`
-      : "New versions download themselves. You can also check now."
+    ? "New versions download themselves. Tap Check for updates any time."
     : "Looks up the latest Windows installer. Install that app if you want updates on this computer.";
 
   return (
-    <Section title="Updates">
-      <Row
-        label="Check for updates"
-        hint={hint}
-        control={
-          <Button type="button" variant="play" disabled={busy} onClick={() => void onCheck()}>
+    <section className="mb-10">
+      <h2 className="mb-4 text-sm font-semibold tracking-wide text-subtle uppercase">Updates</h2>
+      <div className="rounded-md bg-surface px-5 py-5">
+        <p className="text-lg font-semibold">{heading}</p>
+        <p className="mt-1 text-sm text-muted">{hint}</p>
+        {note ? (
+          <p className={cn("mt-3 text-sm", status.status === "error" ? "text-accent" : "text-fg")}>{note}</p>
+        ) : null}
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button
+            type="button"
+            variant="play"
+            size="lg"
+            disabled={busy}
+            onClick={() => void runCheck()}
+            className="w-full sm:w-auto"
+          >
             <RefreshCw className={cn("size-4", busy && "animate-spin")} />
             {busy ? "Checking…" : "Check for updates"}
           </Button>
-        }
-      />
-      {note ? (
-        <Row
-          label="Status"
-          hint={note}
-          control={
-            ready && desktop ? (
-              <Button type="button" variant="accent" onClick={() => void window.noxDesktop?.installUpdate?.()}>
-                Install and restart
-              </Button>
-            ) : status.status === "available" && !desktop ? (
-              <Button asChild variant="play">
-                <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
-                  <Download className="size-4" />
-                  Get Nox {status.version}
-                </a>
-              </Button>
-            ) : null
-          }
-        />
-      ) : null}
-      {!desktop ? (
-        <Row
-          label="Windows app"
-          hint="Cinema audio (Atmos / DTS / AC3) and add-ons that stay on this PC."
-          control={
-            <Button asChild variant="muted">
+          {ready && desktop ? (
+            <Button
+              type="button"
+              variant="accent"
+              size="lg"
+              onClick={() => void window.noxDesktop?.installUpdate?.()}
+              className="w-full sm:w-auto"
+            >
+              Install and restart
+            </Button>
+          ) : null}
+          {status.status === "available" && !desktop ? (
+            <Button asChild variant="play" size="lg" className="w-full sm:w-auto">
+              <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
+                <Download className="size-4" />
+                Get Nox {status.version}
+              </a>
+            </Button>
+          ) : null}
+          {!desktop ? (
+            <Button asChild variant="muted" size="lg" className="w-full sm:w-auto">
               <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
                 <Download className="size-4" />
                 Get Nox for Windows
               </a>
             </Button>
-          }
-        />
-      ) : null}
-    </Section>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 

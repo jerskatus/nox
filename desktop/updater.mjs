@@ -99,7 +99,7 @@ export async function checkForUpdates({ silent = false } = {}) {
     checking = false;
     const raw = error instanceof Error ? error.message : "Update check failed.";
     const message = /404|not found|Cannot find channel|latest\.yml|HttpError: 404/i.test(raw)
-      ? "Nox could not reach the update feed. Download the latest installer from Options if this keeps happening."
+      ? "Nox could not reach the update feed. Download the latest installer from Settings if this keeps happening."
       : raw;
     send({ status: "error", message });
     if (!silent) {
