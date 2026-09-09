@@ -4,6 +4,10 @@ function blob(stream: Stream) {
   return `${stream.name ?? ""} ${stream.title ?? ""} ${stream.description ?? ""} ${stream.behaviorHints?.filename ?? ""} ${stream.behaviorHints?.bingeGroup ?? ""} ${stream.url ?? ""}`.toLowerCase();
 }
 
+function flagBlob(stream: Stream) {
+  return `${stream.name ?? ""} ${stream.title ?? ""} ${stream.description ?? ""} ${stream.behaviorHints?.filename ?? ""} ${stream.behaviorHints?.bingeGroup ?? ""}`;
+}
+
 function kindOf(stream: Stream) {
   if (stream.ytId) return "youtube";
   if (stream.externalUrl) return "external";
@@ -36,9 +40,9 @@ const AAC_AUDIO = /\b(?:aac(?:[.\s-]?lc)?|mp4a|mp3|opus|vorbis|stereo|2\.0|2ch)\
 const AVC_VIDEO = /\b(?:x264|h\.?264|avc)\b/i;
 const TOKEN_EDGE = String.raw`(?:^|[\s.[(\]_{,+\-|/&])`;
 const TOKEN_END = String.raw`(?=$|[\s.\])}_,+\-|/&])`;
-const ENGLISH_AUDIO = new RegExp(`${TOKEN_EDGE}(?:english|eng|en-us|en-gb|en)${TOKEN_END}`, "i");
+const ENGLISH_AUDIO = new RegExp(`${TOKEN_EDGE}(?:english|eng|en-us|en-gb|en|gb|uk)${TOKEN_END}`, "i");
 const FOREIGN_CODE = new RegExp(
-  `${TOKEN_EDGE}(hin|tam|tel|mal|kan|mar|ben|pan|urd|lat|spa|fre|fra|vfq|vff|vostfr|ger|deu|ita|it|por|pt-br|rus|jpn|jap|kor|chi|zho|ara|tha|vie|pol|tur|dut|nld|swe|nor|dan|fin|hun|cze|gre|heb|rum|ukr|ind|fil)${TOKEN_END}`,
+  `${TOKEN_EDGE}(hin|tam|tel|mal|kan|mar|ben|pan|urd|lat|spa|fre|fra|vfq|vff|vostfr|ger|deu|ita|it|por|pt-br|rus|ru|jpn|jap|kor|chi|zho|ara|tha|vie|pol|tur|dut|nld|swe|nor|dan|fin|hun|cze|gre|heb|rum|ukr|ind|fil|es|fr|de|pt|pl|nl|ja|ko|zh|hi|tr|sv|cs|hu|ro|el|th|vi)${TOKEN_END}`,
   "i",
 );
 const FOREIGN_NAME =
@@ -98,6 +102,9 @@ const LANG_CC: Record<string, string> = {
   en: "gb",
   eng: "gb",
   english: "gb",
+  gb: "gb",
+  uk: "gb",
+  us: "us",
   it: "it",
   ita: "it",
   italian: "it",
@@ -201,7 +208,7 @@ const LANG_CC: Record<string, string> = {
   ro: "ro",
   rum: "ro",
   romanian: "ro",
-  uk: "ua",
+  ua: "ua",
   ukr: "ua",
   ukrainian: "ua",
   id: "id",
@@ -444,7 +451,13 @@ function prettyLang(raw: string) {
     brazilian: "Portuguese",
     "pt-br": "Portuguese",
     rus: "Russian",
+    ru: "Russian",
     russian: "Russian",
+    gb: "English",
+    uk: "English",
+    us: "English",
+    en: "English",
+    eng: "English",
     jpn: "Japanese",
     jap: "Japanese",
     japanese: "Japanese",
@@ -483,12 +496,11 @@ function ccForLang(raw: string) {
 
 export function spokenFlagsFromText(text: string): SpokenFlag[] {
   const spoken = spokenFrom(text);
-  const existing = flagCodes(text);
   const out: SpokenFlag[] = [];
   const seen = new Set<string>();
   const add = (cc: string | null | undefined) => {
     if (!cc) return;
-    const code = cc.toLowerCase();
+    const code = (cc === "uk" ? "gb" : cc).toLowerCase();
     if (seen.has(code)) return;
     const emoji = countryFlag(code);
     if (!emoji) return;
@@ -496,7 +508,8 @@ export function spokenFlagsFromText(text: string): SpokenFlag[] {
     const lang = FLAG_LANG[code] ?? code;
     out.push({ emoji, code, label: prettyLang(lang) || code.toUpperCase() });
   };
-  for (const cc of existing) add(cc);
+  for (const cc of flagCodes(text)) add(cc);
+  for (const token of isoLangTokens(text)) add(ccForLang(token));
   const compact = text.replace(/\s+/g, " ").trim();
   const labelLike = compact.length > 0 && compact.length <= 28 && !/\d{3,}/.test(compact);
   if (out.length === 0 && labelLike) {
@@ -506,23 +519,43 @@ export function spokenFlagsFromText(text: string): SpokenFlag[] {
       const coded = compact.match(FOREIGN_CODE);
       add(ccForLang(named?.[0] ?? coded?.[1] ?? coded?.[0] ?? compact));
     }
-    if (out.length === 0) add("gb");
     return out;
   }
   if (out.length === 0) {
-    if (spoken === "en" || spoken === "unknown") add("gb");
-    else {
+    if (spoken === "en") add("gb");
+    else if (spoken === "foreign" || spoken === "dual") {
       const named = text.match(new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i"));
       const coded = text.match(FOREIGN_CODE);
       add(ccForLang(named?.[0] ?? coded?.[1] ?? coded?.[0] ?? ""));
       if (spoken === "dual") add("gb");
     }
-  } else if (spoken === "dual" && !existing.some((code) => EN_FLAG.has(code))) {
+  } else if (spoken === "dual" && !out.some((flag) => EN_FLAG.has(flag.code))) {
     add("gb");
   }
   return out;
 }
 
+const ISO_LANG_TOKEN = new RegExp(
+  `${TOKEN_EDGE}(gb|uk|en|eng|us|au|ca|nz|ie|ru|rus|it|ita|fr|fra|de|deu|es|spa|pt|pl|nl|jp|ja|kr|ko|cn|zh|hi|hin|ar|tr|se|sv|br|mx|cz|hu|ro|ua|gr|il|th|vn|multi)${TOKEN_END}`,
+  "gi",
+);
+
+function isoLangTokens(text: string) {
+  const grouped = [
+    ...text.matchAll(/\[([a-z]{2,3}(?:\s*[+/|,]\s*[a-z]{2,3}){1,8})\]/gi),
+    ...text.matchAll(/\b([a-z]{2,3}(?:\s*[+/|,]\s*[a-z]{2,3}){1,8})\b/gi),
+  ];
+  const tokens: string[] = [];
+  for (const match of grouped) {
+    for (const part of (match[1] ?? "").split(/[+/|,]/)) {
+      const token = part.trim();
+      if (token) tokens.push(token);
+    }
+  }
+  if (tokens.length > 0) return tokens;
+  return [...text.matchAll(ISO_LANG_TOKEN)].map((match) => match[1] ?? match[0] ?? "").filter(Boolean);
+}
+
 export function streamSpokenFlags(stream: Stream) {
-  return spokenFlagsFromText(blob(stream));
+  return spokenFlagsFromText(flagBlob(stream));
 }

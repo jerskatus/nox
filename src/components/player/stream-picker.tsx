@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { streamKind } from "@/lib/stremio/client";
 import { streamFlags, streamSpokenFlags, streamSpokenLabel } from "@/lib/stremio/stream-rank";
+import { FlagRow } from "./audio-flags";
 import { streamDetailLines, streamQuality, streamSizeLabel } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -144,7 +145,7 @@ export function StreamPicker({
                       <StreamSection
                         key={group.name}
                         title={group.name}
-                        icon={<span className="text-base leading-none">{group.flags}</span>}
+                        icon={<FlagRow flags={group.flags} />}
                         count={group.streams.length}
                         streams={group.streams}
                         selectedKey={selectedKey}
@@ -249,7 +250,7 @@ function groupByLanguage(streams: Stream[]) {
     .map(([name, list]) => ({
       name,
       streams: list,
-      flags: streamSpokenFlags(list[0]!).map((flag) => flag.emoji).join(""),
+      flags: streamSpokenFlags(list[0]!),
     }))
     .sort((a, b) => b.streams.length - a.streams.length || a.name.localeCompare(b.name));
 }
@@ -340,14 +341,5 @@ function StreamChoice({
 }
 
 function AudioFlags({ stream }: { stream: Stream }) {
-  const flags = streamSpokenFlags(stream);
-  if (flags.length === 0) return null;
-  const label = flags.map((flag) => flag.label).join(" + ");
-  return (
-    <span className="inline-flex items-center gap-0.5 text-base leading-none" title={label} aria-label={label}>
-      {flags.map((flag) => (
-        <span key={flag.code}>{flag.emoji}</span>
-      ))}
-    </span>
-  );
+  return <FlagRow flags={streamSpokenFlags(stream)} />;
 }

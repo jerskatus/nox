@@ -16,7 +16,8 @@ import {
 import { type PointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { desktopHasEngine, type DesktopAudioTrack } from "@/lib/desktop";
-import { isEnglishLabel, isForeignLabel, spokenFlagsFromText } from "@/lib/stremio/stream-rank";
+import { isEnglishLabel, isForeignLabel, spokenFlagsFromText, type SpokenFlag } from "@/lib/stremio/stream-rank";
+import { FlagRow } from "./audio-flags";
 import { loadSubtitleFile } from "@/lib/stremio/client";
 import {
   type Cue,
@@ -57,6 +58,7 @@ type Props = {
   onSubtitleChange?: (lang: string | null) => void;
   preferredAudioLang?: string | null;
   cinemaAudio?: boolean;
+  audioHints?: SpokenFlag[];
   onAudioChange?: (lang: string | null) => void;
   onPlaybackError?: () => void;
   onSilentAudio?: () => void;
@@ -93,6 +95,7 @@ export function VideoPlayer({
   preferredLang,
   preferredAudioLang,
   cinemaAudio = false,
+  audioHints = [],
   isEpisode,
   introSkipTo,
   autoplayNext = true,
@@ -138,6 +141,9 @@ export function VideoPlayer({
   const audioTracksRef = useRef<AudioChoice[]>([]);
   audioTracksRef.current = audioTracks;
   const engineTriedAudio = useRef(new Set<number>());
+  const engineTracksRef = useRef<AudioChoice[]>([]);
+  const audioHintsRef = useRef(audioHints);
+  audioHintsRef.current = audioHints;
   const [selectedAudio, setSelectedAudio] = useState(0);
   const [usingEngine, setUsingEngine] = useState(false);
   const [engineNote, setEngineNote] = useState<string | null>(null);
@@ -397,6 +403,7 @@ export function VideoPlayer({
     userPickedAudio.current = false;
     lastAudioLang.current = preferredAudioRef.current || "eng";
     engineTriedAudio.current = new Set();
+    engineTracksRef.current = [];
     setAudioTracks([]);
     setSelectedAudio(0);
     setAudioOpen(false);
@@ -471,8 +478,8 @@ export function VideoPlayer({
               if (pickingAudio) return;
               pickingAudio = true;
               try {
-                const tracks = mapHlsTracks(instance.audioTracks);
-                const list = tracks.length ? tracks : originalTrack();
+                const tracks = mergeHintTracks(mapHlsTracks(instance.audioTracks), audioHintsRef.current);
+                const list = tracks.length ? tracks : mergeHintTracks(originalTrack(), audioHintsRef.current);
                 setAudioTracks(list);
                 if (!tracks.length) {
                   setSelectedAudio(0);
@@ -553,12 +560,16 @@ export function VideoPlayer({
       try {
         const info = await api.probe(src);
         if (cancelled || gen !== engineGenRef.current) return;
-        const tracks = mapEngineTracks(info.tracks);
         if (info.duration > 0) {
           engineDurationRef.current = info.duration;
           setDuration(info.duration);
         }
-        const list = tracks.length ? tracks : [{ ...originalTrack()[0]!, source: "engine" as const }];
+        const tracks = mapEngineTracks(info.tracks);
+        const list = mergeHintTracks(
+          tracks.length ? tracks : [{ ...originalTrack()[0]!, source: "engine" as const }],
+          audioHintsRef.current,
+        );
+        engineTracksRef.current = list;
         setAudioTracks(list);
         const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
         const picked = list[pickBestAudioIndex(list, remembered)] ?? list[0]!;
@@ -628,20 +639,24 @@ export function VideoPlayer({
       })();
     };
 
-    if (desktopHasEngine()) void loadEngine();
+    if (desktopHasEngine() && kind !== "hls") void loadEngine();
     else loadBrowser();
 
     const syncNativeAudio = () => {
       if (cancelled) return;
-      if (engineActiveRef.current) return;
+      if (engineActiveRef.current || engineTracksRef.current.length > 0) {
+        if (engineTracksRef.current.length > 0) setAudioTracks(engineTracksRef.current);
+        return;
+      }
       if (hlsRef.current && hlsRef.current.audioTracks.length > 0) return;
       const list = nativeAudioList(video);
       if (!list.length) {
-        setAudioTracks(originalTrack());
+        const hinted = mergeHintTracks(originalTrack(), audioHintsRef.current);
+        setAudioTracks(hinted);
         setSelectedAudio(0);
         return;
       }
-      const mapped = mapNativeTracks(list);
+      const mapped = mergeHintTracks(mapNativeTracks(list), audioHintsRef.current);
       setAudioTracks(mapped);
       const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
       if (userPickedAudio.current) {
@@ -1893,6 +1908,39 @@ function mapNativeTracks(list: NativeList): AudioChoice[] {
   return out;
 }
 
+function mergeHintTracks(tracks: AudioChoice[], hints: SpokenFlag[]): AudioChoice[] {
+  if (!hints.length) return tracks;
+  if (tracks.length > 1) {
+    return tracks.map((track, i) => {
+      const hint = hints[i];
+      if (!hint) return track;
+      if (track.lang && (isEnglishLabel(track.lang) || isForeignLabel(track.lang))) return track;
+      return {
+        ...track,
+        lang: track.lang || hint.code,
+        name: isGenericAudioName(track.name) ? hint.label : track.name,
+      };
+    });
+  }
+  const source = tracks[0]?.source;
+  if (source === "engine" && hints.length > 1) {
+    const base = tracks[0]!;
+    return hints.map((hint, i) => ({
+      ...base,
+      id: `engine-hint-${hint.code}-${i}`,
+      index: i,
+      name: hint.label,
+      lang: hint.code,
+      isDefault: i === 0,
+    }));
+  }
+  const track = tracks[0];
+  const hint = hints[0];
+  if (!track || !hint) return tracks;
+  if (track.lang && (isEnglishLabel(track.lang) || isForeignLabel(track.lang))) return tracks;
+  return [{ ...track, lang: track.lang || hint.code, name: isGenericAudioName(track.name) ? hint.label : track.name }];
+}
+
 function mapEngineTracks(tracks: DesktopAudioTrack[]): AudioChoice[] {
   return tracks.map((t) => ({
     id: `engine-${t.index}-${t.lang}-${t.codec}`,
@@ -1953,15 +2001,7 @@ function isCinemaAudio(track: AudioChoice) {
 }
 
 function AudioLangFlags({ lang, name }: { lang: string; name: string }) {
-  const flags = spokenFlagsFromText(`${lang} ${name}`);
-  if (flags.length === 0) return null;
-  return (
-    <span className="shrink-0 text-base leading-none" title={flags.map((flag) => flag.label).join(" + ")}>
-      {flags.map((flag) => (
-        <span key={flag.code}>{flag.emoji}</span>
-      ))}
-    </span>
-  );
+  return <FlagRow flags={spokenFlagsFromText(`${lang} ${name}`)} />;
 }
 
 function audioTrackTitle(track: AudioChoice) {

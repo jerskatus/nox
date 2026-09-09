@@ -21,7 +21,7 @@ import {
   videoTitle,
 } from "@/lib/stremio/client";
 import { streamQuality } from "@/lib/stremio/subtitles";
-import { playableStreams, streamFlags } from "@/lib/stremio/stream-rank";
+import { playableStreams, streamFlags, streamSpokenFlags } from "@/lib/stremio/stream-rank";
 import type { Stream } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
 import { useLibraryStore } from "@/stores/library";
@@ -298,6 +298,7 @@ function WatchPage() {
         preferredLang={subtitleMode === "en" ? "eng" : subtitleMode === "last" ? pref?.subtitleLang : undefined}
         preferredAudioLang="eng"
         cinemaAudio={streamFlags(selected).cinemaAudio}
+        audioHints={streamSpokenFlags(selected)}
         isEpisode={type === "series" || Boolean(episode)}
         introSkipTo={pref?.introSkipTo}
         autoplayNext={autoplayNext && Boolean(nextId)}
