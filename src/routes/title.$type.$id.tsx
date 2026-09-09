@@ -15,6 +15,7 @@ import type { Meta, Video } from "@/lib/stremio/types";
 import { useEnabledAddons } from "@/stores/addons";
 import { isWatched, progressFor, progressRatio, useLibraryStore } from "@/stores/library";
 import { cn, decodeId, formatRating } from "@/lib/utils";
+import { cleanSynopsis } from "@/lib/synopsis";
 
 export const Route = createFileRoute("/title/$type/$id")({
   loader: async ({ params }) => {
@@ -121,6 +122,7 @@ function TitleBody({ meta }: { meta: Meta }) {
   const [trailerOpen, setTrailerOpen] = useState(false);
   const playId = progress?.videoId ?? defaultVideoId(meta);
   const play = watchPath(meta, playId === meta.id ? undefined : playId, { auto: Boolean(progress) });
+  const synopsis = cleanSynopsis(meta.description);
 
   return (
     <main>
@@ -162,9 +164,9 @@ function TitleBody({ meta }: { meta: Meta }) {
                 runtime={meta.runtime}
                 genres={genres}
               />
-              {meta.description ? (
+              {synopsis ? (
                 <p className="mb-6 line-clamp-3 max-w-xl text-sm leading-relaxed text-fg/90 sm:text-base">
-                  {meta.description}
+                  {synopsis}
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">

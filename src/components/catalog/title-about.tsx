@@ -1,7 +1,9 @@
 import type { Meta } from "@/lib/stremio/types";
+import { cleanSynopsis, synopsisFitsHero } from "@/lib/synopsis";
 
 export function TitleAbout({ meta }: { meta: Meta }) {
-  const description = meta.description?.trim() ?? "";
+  const description = cleanSynopsis(meta.description);
+  const showSynopsis = description.length > 0 && !synopsisFitsHero(description);
   const cast = names(meta.cast).slice(0, 12);
   const directors = names(meta.director);
   const writers = names(meta.writer);
@@ -12,7 +14,7 @@ export function TitleAbout({ meta }: { meta: Meta }) {
   const episodeCount = videos.filter((v) => (v.season ?? 0) > 0 || v.episode || v.number).length;
   const series = meta.type === "series";
   const hasCredits = Boolean(
-    description ||
+    showSynopsis ||
       cast.length ||
       directors.length ||
       writers.length ||
@@ -27,14 +29,16 @@ export function TitleAbout({ meta }: { meta: Meta }) {
   return (
     <section className="px-4 py-10 sm:px-8 lg:px-12">
       <h2 className="mb-6 text-xl font-semibold tracking-tight">About {meta.name}</h2>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.85fr)] lg:gap-16">
-        <div className="min-w-0">
-          {description ? (
-            <p className="max-w-3xl text-base leading-relaxed text-fg/90">{description}</p>
-          ) : (
-            <p className="max-w-3xl text-base text-muted">No synopsis yet for this title.</p>
-          )}
-        </div>
+      <div
+        className={
+          showSynopsis
+            ? "grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.85fr)] lg:gap-16"
+            : "max-w-xl"
+        }
+      >
+        {showSynopsis ? (
+          <p className="max-w-3xl text-base leading-relaxed text-fg/90">{description}</p>
+        ) : null}
         <dl className="grid content-start gap-4">
           <AboutRow label="Cast" value={join(cast)} />
           <AboutRow

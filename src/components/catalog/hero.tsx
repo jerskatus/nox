@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { fetchMeta } from "@/lib/stremio/client";
 import type { MetaPreview } from "@/lib/stremio/types";
 import { cn, formatRating } from "@/lib/utils";
+import { cleanSynopsis } from "@/lib/synopsis";
 import { useEnabledAddons } from "@/stores/addons";
 import { titlePath, watchPath } from "./poster-card";
 import { TitleMeta } from "./title-meta";
@@ -62,6 +63,7 @@ export function Hero({
   const play = watchPath(shown, resumeVideo, { auto: Boolean(resumeVideo) });
   const info = titlePath(shown);
   const trailerId = heroMeta.data ? trailerYoutubeId(heroMeta.data) : null;
+  const synopsis = cleanSynopsis(shown.description);
 
   return (
     <section
@@ -112,9 +114,9 @@ export function Hero({
             rating={rating}
             genres={shown.genres ?? []}
           />
-          {shown.description ? (
+          {synopsis ? (
             <p className="mb-6 line-clamp-3 max-w-lg text-sm leading-relaxed text-fg/90 sm:text-base">
-              {shown.description}
+              {synopsis}
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
