@@ -18,7 +18,6 @@ function run(command, args, env) {
       cwd: root,
       env: { ...process.env, ...env },
       stdio: "inherit",
-      shell: process.platform === "win32",
     });
     child.on("error", reject);
     child.on("exit", (code, signal) => {
@@ -29,7 +28,11 @@ function run(command, args, env) {
   });
 }
 
-await run("npm", ["run", "build"], {
+await run(process.execPath, [
+  join(root, "scripts", "with-app-env.mjs"),
+  join(root, "node_modules", "vite", "bin", "vite.js"),
+  "build",
+], {
   NITRO_PRESET: "node-server",
 });
 
