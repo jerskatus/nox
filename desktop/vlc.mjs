@@ -140,6 +140,7 @@ export function createVlc() {
     if (process.platform !== "win32") return false;
     if (!dir) return false;
     start();
+    if (!child) return false;
     const begin = Date.now();
     while (!ready && Date.now() - begin < 8000) {
       await new Promise((r) => setTimeout(r, 50));

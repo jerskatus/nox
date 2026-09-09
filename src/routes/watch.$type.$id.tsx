@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { List } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { StreamPicker } from "@/components/player/stream-picker";
 import { streamKey, VideoPlayer, YouTubePlayer } from "@/components/player/video-player";
@@ -27,7 +27,7 @@ import { useEnabledAddons } from "@/stores/addons";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
 import { decodeId, unlockMediaPlayback } from "@/lib/utils";
-import { desktopHasEngine } from "@/lib/desktop";
+import { isNoxDesktop } from "@/lib/desktop";
 
 type Search = { video?: string; auto?: string };
 
@@ -56,10 +56,11 @@ function WatchPage() {
   const playbackRate = useSettingsStore((s) => s.playbackRate);
   const subtitleMode = useSettingsStore((s) => s.subtitles);
   const pref = prefs[id];
-  const [desktop, setDesktop] = useState(false);
-  useEffect(() => {
-    setDesktop(desktopHasEngine());
-  }, []);
+  const desktop = useSyncExternalStore(
+    () => () => undefined,
+    isNoxDesktop,
+    () => false,
+  );
 
   const metaQuery = useQuery({
     queryKey: ["meta", type, id, addons.map((a) => a.transportUrl).join("|")],

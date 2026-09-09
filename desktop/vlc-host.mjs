@@ -281,10 +281,13 @@ async function waitForOpen(timeoutMs) {
     const snap = snapshot();
     if (snap.state === 7) throw new Error(api?.libvlc_errmsg() || "VLC could not open this stream");
     if (snap.state === 6) throw new Error("Stream ended");
-    if (snap.state === 3 || snap.state === 4 || snap.length > 0 || snap.tracks.length > 0) return snap;
+    if (snap.state === 5 && Date.now() - start > 1500) throw new Error("VLC stopped");
+    if (snap.state === 3 || snap.state === 4) return snap;
     await new Promise((r) => setTimeout(r, 120));
   }
-  return snapshot();
+  const snap = snapshot();
+  if (snap.state === 3 || snap.state === 4) return snap;
+  throw new Error("VLC could not start this stream");
 }
 
 function playMedia(opts) {
@@ -295,7 +298,7 @@ function playMedia(opts) {
   const media = api.libvlc_media_new_location(instance, opts.url);
   if (!media) throw new Error(api.libvlc_errmsg() || "VLC could not open the URL");
   const startAt = Math.max(0, Number(opts.startAt) || 0);
-  api.libvlc_media_add_option(media, ":http-user-agent=Mozilla/5.0 (compatible; NoxDesktop/1.3)");
+  api.libvlc_media_add_option(media, ":http-user-agent=Mozilla/5.0 (compatible; NoxDesktop/1.3.4)");
   api.libvlc_media_add_option(media, ":http-reconnect");
   api.libvlc_media_add_option(media, ":no-sub-autodetect-file");
   if (startAt > 0.4) api.libvlc_media_add_option(media, `:start-time=${startAt.toFixed(3)}`);
@@ -311,7 +314,7 @@ function playMedia(opts) {
   applyFit(opts.fit || currentFit, lastBounds.w, lastBounds.h);
   const code = api.libvlc_media_player_play(player);
   if (code !== 0) throw new Error(api.libvlc_errmsg() || "VLC play failed");
-  return waitForOpen(18_000);
+  return waitForOpen(10_000);
 }
 
 function stopPlayback() {
@@ -390,7 +393,7 @@ setInterval(() => {
     ended,
     error: error ? api?.libvlc_errmsg() || "Playback failed" : null,
   };
-  const key = `${payload.playing}|${Math.round(payload.time / 250)}|${payload.length}|${payload.tracks.length}|${payload.audio}|${ended}|${payload.error || ""}`;
+  const key = `${payload.playing}|${payload.buffering ? 1 : 0}|${Math.round(payload.time / 250)}|${payload.length}|${payload.tracks.length}|${payload.audio}|${ended}|${payload.error || ""}`;
   if (key === lastEmit) return;
   lastEmit = key;
   send(payload);
@@ -490,6 +493,13 @@ async function handle(msg) {
     }
     fail(id, `Unknown op ${op}`);
   } catch (error) {
+    if (op === "play") {
+      try {
+        stopPlayback();
+      } catch {
+        /* ignore */
+      }
+    }
     fail(id, error instanceof Error ? error.message : error);
   }
 }

@@ -1,6 +1,7 @@
 import { Play, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { isNoxDesktop } from "@/lib/desktop";
 import { unlockMediaPlayback } from "@/lib/utils";
 
 export function TrailerModal({
@@ -12,7 +13,7 @@ export function TrailerModal({
   title: string;
   onClose: () => void;
 }) {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(() => isNoxDesktop());
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   useEffect(() => {

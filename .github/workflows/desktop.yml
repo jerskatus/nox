@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.3 shows the plot once on a title (it was repeating under About). Add-ons and settings stay on disk. Auto-update reads the public Nox releases feed.
+            1.3.4 starts playback in the Windows app without a Play with sound click. If VLC cannot open a stream it falls through to the other player instead of spinning forever.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

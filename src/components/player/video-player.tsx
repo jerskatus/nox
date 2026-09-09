@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { type PointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { desktopHasEngine, desktopHasVlc, type DesktopAudioTrack } from "@/lib/desktop";
+import { desktopHasEngine, desktopHasVlc, type DesktopAudioTrack, isNoxDesktop } from "@/lib/desktop";
 import { isEnglishLabel, isForeignLabel, spokenFlagsFromText, type SpokenFlag } from "@/lib/stremio/stream-rank";
 import { FlagRow } from "./audio-flags";
 import { loadSubtitleFile } from "@/lib/stremio/client";
@@ -82,7 +82,7 @@ type AudioChoice = {
 type SyncState = "idle" | "listening" | "tap" | "done";
 
 /** Set true after the user clicks Play with sound so the next source can autoplay. */
-let playArmed = false;
+let playArmed = typeof window !== "undefined" && Boolean(window.noxDesktop);
 
 export function VideoPlayer({
   src,
@@ -148,6 +148,7 @@ export function VideoPlayer({
   const [usingEngine, setUsingEngine] = useState(false);
   const [usingVlc, setUsingVlc] = useState(false);
   const [engineNote, setEngineNote] = useState<string | null>(null);
+  const [bootKey, setBootKey] = useState(0);
   const userPickedAudio = useRef(false);
   const preferredAudioRef = useRef(preferredAudioLang);
   preferredAudioRef.current = preferredAudioLang;
@@ -192,6 +193,8 @@ export function VideoPlayer({
   const engineActiveRef = useRef(false);
   const vlcActiveRef = useRef(false);
   const vlcTimeRef = useRef(0);
+  const vlcGaveUpRef = useRef(false);
+  const vlcFallbackRef = useRef<() => void>(() => undefined);
   const engineSwapRef = useRef(false);
   const engineGenRef = useRef(0);
   const engineSeekTimer = useRef<number | null>(null);
@@ -203,7 +206,7 @@ export function VideoPlayer({
   freezeRef.current = freezeControls;
   const subKey = subtitles.map((s) => s.url).join("|");
   const [needsSound, setNeedsSound] = useState(false);
-  const [needsGesture, setNeedsGesture] = useState(!playArmed);
+  const [needsGesture, setNeedsGesture] = useState(() => !playArmed && !isNoxDesktop());
 
   const bumpControls = useCallback(() => {
     setControls(true);
@@ -320,6 +323,15 @@ export function VideoPlayer({
   );
 
   function noteSilentPlayback(video: HTMLVideoElement) {
+    if (isNoxDesktop()) {
+      pendingSound.current = false;
+      setNeedsSound(false);
+      if (video.muted && !playerMutedRef.current) {
+        video.muted = false;
+        video.volume = useSettingsStore.getState().volume || 1;
+      }
+      return;
+    }
     if (playerMutedRef.current) {
       pendingSound.current = false;
       setNeedsSound(false);
@@ -434,6 +446,8 @@ export function VideoPlayer({
     engineActiveRef.current = false;
     vlcActiveRef.current = false;
     vlcTimeRef.current = 0;
+    vlcGaveUpRef.current = false;
+    vlcFallbackRef.current = () => undefined;
     engineOffsetRef.current = 0;
     engineDurationRef.current = 0;
     engineAudioRef.current = 0;
@@ -445,7 +459,7 @@ export function VideoPlayer({
     }
     let cancelled = false;
     const holder: { hls: { destroy: () => void } | null } = { hls: null };
-    if (desktopHasEngine()) playArmed = true;
+    if (desktopHasEngine() || isNoxDesktop()) playArmed = true;
 
     const attemptPlay = async () => {
       if (cancelled) return;
@@ -464,7 +478,7 @@ export function VideoPlayer({
       }
       setWaiting(false);
       engineSwapRef.current = false;
-      if (!playArmed) {
+      if (!playArmed && !isNoxDesktop()) {
         setNeedsGesture(true);
         setPlaying(false);
         setControls(true);
@@ -661,7 +675,10 @@ export function VideoPlayer({
             ? { x: wrap.x, y: wrap.y, width: wrap.width, height: wrap.height }
             : undefined,
         });
-        if (cancelled || gen !== engineGenRef.current) return;
+        if (cancelled || gen !== engineGenRef.current) {
+          void api.vlcStop?.();
+          return;
+        }
         vlcActiveRef.current = true;
         setUsingVlc(true);
         setUsingEngine(false);
@@ -689,12 +706,40 @@ export function VideoPlayer({
         setNeedsSound(false);
       } catch {
         if (cancelled || gen !== engineGenRef.current) return;
+        vlcGaveUpRef.current = true;
         vlcActiveRef.current = false;
         setUsingVlc(false);
         setEngineNote(null);
-        if (desktopHasEngine() && kind !== "hls") void loadEngine();
-        else loadBrowser();
+        setBootKey((n) => n + 1);
+        if (desktopHasEngine() && kind !== "hls") {
+          setUsingEngine(true);
+          void loadEngine();
+        } else loadBrowser();
       }
+    };
+
+    vlcFallbackRef.current = () => {
+      if (cancelled) return;
+      if (vlcGaveUpRef.current) {
+        setWaiting(false);
+        setError("This stream stalled.");
+        onPlaybackError?.();
+        return;
+      }
+      vlcGaveUpRef.current = true;
+      engineGenRef.current += 1;
+      vlcActiveRef.current = false;
+      setUsingVlc(false);
+      setWaiting(true);
+      setError(null);
+      setNeedsGesture(false);
+      setNeedsSound(false);
+      setBootKey((n) => n + 1);
+      setEngineNote("Trying another player…");
+      startAtRef.current = vlcTimeRef.current || startAtRef.current;
+      void window.noxDesktop?.vlcStop?.();
+      if (desktopHasEngine() && kind !== "hls") void loadEngine();
+      else loadBrowser();
     };
 
     engineRestartRef.current = (startAt: number) => {
@@ -726,8 +771,13 @@ export function VideoPlayer({
     };
 
     if (desktopHasVlc()) void loadVlc();
-    else if (desktopHasEngine() && kind !== "hls") void loadEngine();
-    else loadBrowser();
+    else if (desktopHasEngine() && kind !== "hls") {
+      vlcGaveUpRef.current = true;
+      void loadEngine();
+    } else {
+      vlcGaveUpRef.current = true;
+      loadBrowser();
+    }
 
     const syncNativeAudio = () => {
       if (cancelled) return;
@@ -800,9 +850,13 @@ export function VideoPlayer({
   useEffect(() => {
     if (!waiting || error) return;
     const timer = window.setTimeout(() => {
-      if (vlcActiveRef.current) return;
-      const video = videoRef.current;
       if (!waitingRef.current) return;
+      if (isNoxDesktop()) {
+        vlcFallbackRef.current();
+        return;
+      }
+      const video = videoRef.current;
+      if (vlcActiveRef.current) return;
       if (!video || video.paused || video.ended) {
         setWaiting(false);
         setNeedsGesture(true);
@@ -811,9 +865,9 @@ export function VideoPlayer({
       }
       setError("This stream stalled.");
       onPlaybackError?.();
-    }, usingEngine || usingVlc ? 22_000 : 12_000);
+    }, usingEngine || usingVlc ? 14_000 : 12_000);
     return () => window.clearTimeout(timer);
-  }, [waiting, error, src, onPlaybackError, usingEngine, usingVlc]);
+  }, [waiting, error, src, onPlaybackError, usingEngine, usingVlc, bootKey]);
 
   useEffect(() => {
     if (error || waiting) return;
@@ -1282,8 +1336,8 @@ export function VideoPlayer({
         setDuration(payload.length / 1000);
       }
       if (typeof payload.playing === "boolean") setPlaying(payload.playing);
-      if (payload.buffering) setWaiting(true);
-      else if (payload.playing) setWaiting(false);
+      if (payload.playing) setWaiting(false);
+      else if (payload.buffering) setWaiting(true);
       if (payload.tracks && payload.tracks.length > 1 && payload.tracks.length !== engineTracksRef.current.length) {
         const mapped = mapVlcTracks(payload.tracks);
         engineTracksRef.current = mapped;
@@ -1382,8 +1436,11 @@ export function VideoPlayer({
           if (!video) return;
           if (!playerMutedRef.current && video.muted) {
             video.muted = false;
-            pendingSound.current = true;
-            setNeedsSound(true);
+            video.volume = useSettingsStore.getState().volume || 1;
+            if (!isNoxDesktop()) {
+              pendingSound.current = true;
+              setNeedsSound(true);
+            }
           }
           const t = mediaTime();
           const d =
@@ -1424,7 +1481,7 @@ export function VideoPlayer({
         }}
       />
 
-      {waiting && !error && !needsGesture && !needsSound ? (
+      {waiting && !error && (isNoxDesktop() || (!needsGesture && !needsSound)) ? (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div className="size-12 animate-spin rounded-full border-2 border-fg/20 border-t-accent" />
         </div>
@@ -1452,7 +1509,7 @@ export function VideoPlayer({
         </div>
       ) : null}
 
-      {needsSound || needsGesture ? (
+      {!isNoxDesktop() && (needsSound || needsGesture) ? (
         <button
           type="button"
           className="absolute inset-0 z-50 grid place-items-center bg-bg/70"
@@ -2361,7 +2418,7 @@ export function YouTubePlayer({
   onBack: () => void;
   extra?: ReactNode;
 }) {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(() => isNoxDesktop());
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
