@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, screen } from "electron";
+import { runNodeScript } from "./node-child.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -110,16 +110,19 @@ export function createVlc() {
 
   function start() {
     if (child || process.platform !== "win32" || !dir) return;
-    child = spawn(process.execPath, [join(root, "vlc-host.mjs")], {
+    child = runNodeScript(join(root, "vlc-host.mjs"), {
       cwd: root,
       env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: "1",
         NOX_VLC_DIR: dir,
       },
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
+      onError: (error) => {
+        emit({ evt: "log", message: error instanceof Error ? error.message : String(error) });
+        child = null;
+        ready = false;
+        available = false;
+      },
     });
+    if (!child) return;
     child.stdout?.on("data", onData);
     child.stderr?.on("data", (chunk) => {
       emit({ evt: "log", message: String(chunk) });
@@ -164,7 +167,6 @@ export function createVlc() {
           /* ignore */
         }
       };
-      void ensure();
       const restack = () => {
         if (!win || win.isDestroyed() || !ready) return;
         void sendLine({

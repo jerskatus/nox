@@ -215,6 +215,16 @@ if (process.platform === "win32") {
   app.commandLine.appendSwitch("disable-gpu-compositing");
 }
 
+process.on("uncaughtException", (error) => {
+  const code = error && typeof error === "object" && "code" in error ? error.code : "";
+  const text = error instanceof Error ? error.message : String(error);
+  if (code === "ENOENT" || /spawn .*ENOENT/i.test(text)) {
+    console.error("[nox] spawn failed", error);
+    return;
+  }
+  dialog.showErrorBox("Nox", text || "Nox hit an unexpected error.");
+});
+
 const engine = createEngine();
 const vlc = createVlc();
 

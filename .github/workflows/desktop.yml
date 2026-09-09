@@ -89,7 +89,9 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            Windows now plays inside a built-in VLC engine, so Atmos / DTS / AC3 / TrueHD make sound without converting. Nox chrome (subtitles, skip intro, next episode) stays on top.
+            1.3.1 fixes a Windows crash on launch (spawn Nox.exe ENOENT) when starting the catalog or VLC helper.
+
+            Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 
             After this install, new versions download themselves. You’ll get a restart prompt when one is ready.
 

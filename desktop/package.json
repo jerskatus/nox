@@ -1,7 +1,7 @@
 {
   "name": "nox-desktop",
   "productName": "Nox",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": true,
   "description": "Nox for Windows — self-contained catalog, built-in VLC, and auto-update.",
   "author": "Nox",
@@ -28,7 +28,10 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/ffmpeg-static/**",
-      "node_modules/koffi/**"
+      "node_modules/koffi/**",
+      "vlc-host.mjs",
+      "vlc-tracks.mjs",
+      "node-child.mjs"
     ],
     "files": [
       "main.mjs",
@@ -39,6 +42,7 @@
       "vlc.mjs",
       "vlc-host.mjs",
       "vlc-tracks.mjs",
+      "node-child.mjs",
       "offline.html",
       "icon.png",
       "config.json",
@@ -53,6 +57,7 @@
         ]
       }
     ],
+    "executableName": "Nox",
     "directories": {
       "output": "dist"
     },
@@ -121,6 +126,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
       "shortcutName": "Nox",
+      "uninstallDisplayName": "Nox",
       "artifactName": "Nox-Setup-${version}.exe"
     },
     "portable": {

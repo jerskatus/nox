@@ -1,9 +1,9 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app } from "electron";
+import { runNodeScript } from "./node-child.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -61,11 +61,10 @@ export async function startCatalog() {
   const entry = catalogEntry(dir);
   if (!entry) throw new Error("Nox catalog is missing from this install.");
   const port = await freePort();
-  const child = spawn(process.execPath, [entry], {
+  let spawnError = null;
+  const child = runNodeScript(entry, {
     cwd: dir,
     env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: "1",
       NODE_ENV: "production",
       PORT: String(port),
       NITRO_PORT: String(port),
@@ -74,9 +73,13 @@ export async function startCatalog() {
       NOX_DATA_DIR: join(app.getPath("userData"), "db"),
       NOX_APP_VERSION: app.getVersion(),
     },
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsHide: true,
+    onError: (error) => {
+      spawnError = error;
+    },
   });
+  if (!child) {
+    throw new Error(spawnError?.message || "Nox could not start its catalog. Reinstall from the latest Setup.");
+  }
   let stderr = "";
   child.stderr?.on("data", (chunk) => {
     stderr += String(chunk);
@@ -93,7 +96,7 @@ export async function startCatalog() {
       /* already gone */
     }
     const reason = error instanceof Error ? error.message : "failed";
-    throw new Error(stderr.trim() || reason);
+    throw new Error(stderr.trim() || spawnError?.message || reason);
   }
   return { url, port, child };
 }
