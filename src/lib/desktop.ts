@@ -11,9 +11,17 @@ export type DesktopAudioTrack = {
   title?: string;
 };
 
+export type DesktopUpdateStatus = {
+  status: "idle" | "checking" | "available" | "downloading" | "ready" | "error" | "dev";
+  version?: string;
+  percent?: number;
+  message?: string;
+};
+
 export type NoxDesktop = {
   version: string;
   hasEngine?: boolean;
+  standalone?: boolean;
   probe?: (url: string) => Promise<{ duration: number; tracks: DesktopAudioTrack[] }>;
   play?: (opts: {
     url: string;
@@ -22,6 +30,9 @@ export type NoxDesktop = {
     transcode?: boolean;
   }) => Promise<{ src: string; transcode: boolean }>;
   stop?: () => Promise<void>;
+  checkForUpdates?: () => Promise<DesktopUpdateStatus>;
+  installUpdate?: () => Promise<void>;
+  onUpdateStatus?: (callback: (payload: DesktopUpdateStatus) => void) => () => void;
 };
 
 declare global {
@@ -36,4 +47,8 @@ export function isNoxDesktop() {
 
 export function desktopHasEngine() {
   return Boolean(typeof window !== "undefined" && window.noxDesktop?.hasEngine && window.noxDesktop.play);
+}
+
+export function desktopIsStandalone() {
+  return Boolean(typeof window !== "undefined" && window.noxDesktop?.standalone);
 }

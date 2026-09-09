@@ -202,8 +202,15 @@ function OptionsPage() {
 
 function DesktopSection() {
   const [desktop, setDesktop] = useState(false);
+  const [updateNote, setUpdateNote] = useState("");
   useEffect(() => {
     setDesktop(isNoxDesktop());
+    const stop = window.noxDesktop?.onUpdateStatus?.((payload) => {
+      setUpdateNote(payload.message || "");
+    });
+    return () => {
+      stop?.();
+    };
   }, []);
 
   return (
@@ -216,19 +223,29 @@ function DesktopSection() {
               You’re in the Nox app
             </p>
             <p className="mt-2 text-sm text-muted">
-              The catalog is the live site. When Nox updates, this window picks it up on its own — no reinstall. Playing
-              something? It waits until you leave the player. Atmos, DTS, and AC3 are converted to AAC stereo here so
-              they actually make sound. Surround passthrough to a receiver is not available.
+              This copy runs on your computer — no website required. New versions download themselves; Nox asks to
+              restart when one is ready. Atmos, DTS, and AC3 are converted to AAC stereo so they make sound.
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="play"
+                onClick={() => {
+                  setUpdateNote("Checking…");
+                  void window.noxDesktop?.checkForUpdates?.();
+                }}
+              >
+                Check for updates
+              </Button>
+              {updateNote ? <p className="text-sm text-muted">{updateNote}</p> : null}
+            </div>
           </>
         ) : (
           <>
             <p className="font-medium">Nox on your computer</p>
             <p className="mt-2 mb-4 text-sm text-muted">
-              Install the latest desktop app once. The window loads the live catalog, so list and player updates show up
-              here too. This build converts Atmos / DTS / AC3 to AAC stereo so cinema audio plays in the app — not
-              lossless surround to a receiver. Download a new installer when cinema sound is mentioned; catalog
-              changes do not need that.
+              Install Nox 1.2 or newer for a Windows app that does not need the website. After that, updates install
+              themselves. Cinema audio (Atmos / DTS / AC3) plays as AAC stereo.
             </p>
             <Button asChild variant="play">
               <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">

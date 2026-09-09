@@ -1,18 +1,35 @@
 name: Desktop
 
 on:
+  workflow_dispatch:
   push:
+    tags:
+      - "v*"
     branches: [main]
     paths:
       - desktop/**
+      - scripts/build-desktop-catalog.mjs
       - .github/workflows/desktop.yml
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          VERSION=$(node -p "require('./desktop/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -29,11 +46,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install and build
+      - name: Install app
+        run: npm ci
+      - name: Build catalog
+        run: node scripts/build-desktop-catalog.mjs
+      - name: Install desktop
         working-directory: desktop
-        run: |
-          npm install
-          npx electron-builder ${{ matrix.args }} --publish never
+        run: npm ci
+      - name: Package
+        working-directory: desktop
+        run: npx electron-builder ${{ matrix.args }} --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: nox-${{ matrix.os }}
@@ -42,10 +64,12 @@ jobs:
             desktop/dist/*.AppImage
             desktop/dist/*.zip
             desktop/dist/*.dmg
+            desktop/dist/*.yml
+            desktop/dist/*.blockmap
           if-no-files-found: warn
 
   release:
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -55,15 +79,19 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: desktop
-          name: Nox desktop
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Nox ${{ needs.version.outputs.version }}
           body: |
-            Install once. Nox itself always loads the live catalog, so site updates land automatically — you do not reinstall this window when the catalog changes.
+            Independent Nox app — the catalog runs on this computer. No website required.
 
-            Windows: Nox Setup.exe (installer) or Nox-portable.exe
+            After this install, new versions download themselves. You’ll get a restart prompt when one is ready.
+
+            Windows: Nox-Setup-${{ needs.version.outputs.version }}.exe (use this for auto-update)
+            Windows portable: Nox-portable-${{ needs.version.outputs.version }}.exe
             macOS: zip — open it, then right-click Nox and choose Open the first time
-            Linux: AppImage — mark it executable and run
+            Linux: AppImage
           files: artifacts/*
           fail_on_unmatched_files: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

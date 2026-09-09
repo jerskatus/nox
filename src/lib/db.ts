@@ -111,7 +111,10 @@ async function createPgliteSql(): Promise<Sql> {
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    const dataDir =
+      typeof process !== "undefined" ? process.env.NOX_DATA_DIR?.trim() || undefined : undefined;
     const pg = new PGlite({
+      ...(dataDir ? { dataDir } : {}),
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,

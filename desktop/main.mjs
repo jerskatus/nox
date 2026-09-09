@@ -1,34 +1,34 @@
-import { app, BrowserWindow, Menu, shell, session, ipcMain } from "electron";
+import { app, BrowserWindow, Menu, shell, session, ipcMain, dialog } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createEngine, registerPrivilegedSchemes } from "./engine.mjs";
+import { hasLocalCatalog, startCatalog, stopCatalog } from "./catalog.mjs";
+import { attachUpdater, checkForUpdates, installUpdate } from "./updater.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 registerPrivilegedSchemes();
 
-const START_URL = readStartUrl();
-const origin = new URL(START_URL).origin;
-const VERSION_URL = `${origin}/api/version`;
-const CHECK_MS = 2 * 60 * 1000;
+const CHECK_MS = 4 * 60 * 60 * 1000;
 
 /** @type {BrowserWindow | null} */
 let win = null;
-let lastId = "";
-let checking = false;
+/** @type {{ url: string, port: number, child: import("node:child_process").ChildProcess } | null} */
+let catalog = null;
+let startUrl = "";
 
-function readStartUrl() {
+function remoteOverride() {
   const fromEnv = process.env.NOX_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   try {
     const raw = JSON.parse(readFileSync(join(root, "config.json"), "utf8"));
-    if (typeof raw.url === "string" && raw.url.startsWith("https://")) {
+    if (typeof raw.url === "string" && /^https?:\/\//.test(raw.url)) {
       return raw.url.replace(/\/$/, "");
     }
   } catch {
-    /* bundled default */
+    /* bundled default is local */
   }
-  return "https://nox-gamma-one.vercel.app";
+  return "";
 }
 
 function boundsPath() {
@@ -58,7 +58,9 @@ function isAppUrl(url) {
   try {
     const parsed = new URL(url);
     if (parsed.protocol === "file:") return true;
-    return parsed.origin === origin;
+    if (parsed.protocol === "noxmedia:") return true;
+    if (!startUrl) return false;
+    return parsed.origin === new URL(startUrl).origin;
   } catch {
     return false;
   }
@@ -68,43 +70,6 @@ function openExternal(url) {
   if (!url) return;
   if (url.startsWith("magnet:") || url.startsWith("stremio:") || url.startsWith("http")) {
     void shell.openExternal(url);
-  }
-}
-
-function watching() {
-  if (!win || win.isDestroyed()) return false;
-  try {
-    return new URL(win.webContents.getURL()).pathname.startsWith("/watch");
-  } catch {
-    return false;
-  }
-}
-
-async function remoteVersion() {
-  const response = await fetch(VERSION_URL, { cache: "no-store" });
-  if (!response.ok) throw new Error(String(response.status));
-  const data = (await response.json()) ?? {};
-  return typeof data.id === "string" ? data.id : "";
-}
-
-async function checkForSiteUpdate() {
-  if (!win || win.isDestroyed() || checking) return;
-  checking = true;
-  try {
-    const id = await remoteVersion();
-    if (!id) return;
-    if (!lastId) {
-      lastId = id;
-      return;
-    }
-    if (id === lastId) return;
-    lastId = id;
-    if (watching()) return;
-    win.webContents.reloadIgnoringCache();
-  } catch {
-    /* offline — the window already shows the catalog or the offline page */
-  } finally {
-    checking = false;
   }
 }
 
@@ -158,9 +123,11 @@ function createWindow() {
   });
   if (stored.isMaximized) next.maximize();
   attachWindow(next);
-  void next.loadURL(START_URL, {
-    extraHeaders: "Cache-Control: no-cache\n",
-  });
+  if (startUrl) {
+    void next.loadURL(startUrl, { extraHeaders: "Cache-Control: no-cache\n" });
+  } else {
+    void next.loadFile(join(root, "offline.html"));
+  }
 }
 
 function installMenu() {
@@ -182,10 +149,23 @@ function installMenu() {
         { role: "togglefullscreen" },
         { type: "separator" },
         {
-          label: "Go to live catalog",
+          label: "Home",
           click: () => {
-            if (win && !win.isDestroyed()) void win.loadURL(START_URL);
+            if (win && !win.isDestroyed() && startUrl) void win.loadURL(startUrl);
           },
+        },
+      ],
+    },
+    {
+      label: "Nox",
+      submenu: [
+        {
+          label: "Check for updates…",
+          click: () => void checkForUpdates({ silent: false }),
+        },
+        {
+          label: "Install update and restart",
+          click: () => installUpdate(),
         },
       ],
     },
@@ -194,12 +174,31 @@ function installMenu() {
       submenu: [
         {
           label: "Open in browser",
-          click: () => openExternal(START_URL),
+          click: () => {
+            if (startUrl) openExternal(startUrl);
+          },
+        },
+        {
+          label: "Downloads",
+          click: () => openExternal("https://github.com/jerskatus/nox/releases/latest"),
         },
       ],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+async function bootCatalog() {
+  const override = remoteOverride();
+  if (override) {
+    startUrl = override;
+    return;
+  }
+  if (!hasLocalCatalog()) {
+    throw new Error("This copy of Nox is missing its built-in catalog.");
+  }
+  catalog = await startCatalog();
+  startUrl = catalog.url;
 }
 
 app.setName("Nox");
@@ -218,11 +217,13 @@ if (!gotLock) {
     win.focus();
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     engine.attach();
+    attachUpdater();
     ipcMain.handle("nox:info", () => ({
       version: app.getVersion(),
       hasEngine: engine.available,
+      standalone: Boolean(catalog) || hasLocalCatalog(),
     }));
     ipcMain.handle("nox:probe", (_event, url) => engine.probe(String(url ?? "")));
     ipcMain.handle("nox:play", (_event, opts) =>
@@ -236,6 +237,10 @@ if (!gotLock) {
     ipcMain.handle("nox:stop", () => {
       engine.stop();
     });
+    ipcMain.handle("nox:update-check", () => checkForUpdates({ silent: false }));
+    ipcMain.handle("nox:update-install", () => {
+      installUpdate();
+    });
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
       callback(permission === "media" || permission === "fullscreen" || permission === "notifications");
     });
@@ -248,13 +253,23 @@ if (!gotLock) {
       callback({ requestHeaders: headers });
     });
     installMenu();
+    try {
+      await bootCatalog();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Nox could not start.";
+      dialog.showErrorBox("Nox", message);
+    }
     createWindow();
-    void checkForSiteUpdate();
-    setInterval(() => void checkForSiteUpdate(), CHECK_MS);
-    app.on("browser-window-focus", () => void checkForSiteUpdate());
+    setTimeout(() => void checkForUpdates({ silent: true }), 8000);
+    setInterval(() => void checkForUpdates({ silent: true }), CHECK_MS);
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+  });
+
+  app.on("before-quit", () => {
+    stopCatalog(catalog);
+    catalog = null;
   });
 
   app.on("window-all-closed", () => {

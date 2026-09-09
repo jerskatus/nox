@@ -1,9 +1,9 @@
 {
   "name": "nox-desktop",
   "productName": "Nox",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "Nox desktop shell — always loads the live site so Vercel deploys show up automatically.",
+  "description": "Nox for Windows — self-contained catalog, cinema audio, and auto-update.",
   "author": "Nox",
   "type": "module",
   "main": "main.mjs",
@@ -13,6 +13,7 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "ffmpeg-static": "^5.3.0"
   },
   "devDependencies": {
@@ -31,14 +32,33 @@
       "main.mjs",
       "preload.mjs",
       "engine.mjs",
+      "catalog.mjs",
+      "updater.mjs",
       "offline.html",
       "icon.png",
       "config.json",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "app",
+        "to": "catalog",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jerskatus",
+        "repo": "nox",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "icon": "icon.png",
       "target": [
@@ -86,10 +106,14 @@
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
-      "shortcutName": "Nox"
+      "shortcutName": "Nox",
+      "artifactName": "Nox-Setup-${version}.exe"
     },
     "portable": {
-      "artifactName": "Nox-portable.exe"
+      "artifactName": "Nox-portable-${version}.exe"
+    },
+    "appImage": {
+      "artifactName": "Nox-${version}.AppImage"
     }
   }
 }
