@@ -210,11 +210,9 @@ async function bootCatalog() {
 }
 
 app.setName("Nox");
+app.setAppUserModelId("app.nox.desktop");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("lang", "en-US");
-if (process.platform === "win32") {
-  app.commandLine.appendSwitch("disable-gpu-compositing");
-}
 
 process.on("uncaughtException", (error) => {
   const code = error && typeof error === "object" && "code" in error ? error.code : "";
@@ -278,6 +276,8 @@ if (!gotLock) {
     ipcMain.handle("nox:vlc-bounds", (_event, bounds) => vlc.setBounds(bounds));
     ipcMain.handle("nox:update-check", () => checkForUpdates({ silent: false }));
     ipcMain.handle("nox:update-install", () => {
+      engine.stop();
+      void vlc.stop();
       installUpdate();
     });
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {

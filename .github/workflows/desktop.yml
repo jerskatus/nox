@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.6 puts a Check for updates button at the top of Settings. Open Settings from the header, tap the button, and Install and restart if a version is ready.
+            1.3.7 starts the picture in the Windows player instead of waiting on VLC. If a source stalls it tries the other player, then the next stream. Check for updates is on Settings and retries the feed.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

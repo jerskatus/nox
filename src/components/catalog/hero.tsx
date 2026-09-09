@@ -60,7 +60,7 @@ export function Hero({
   const shown = heroMeta.data ?? item;
   const rating = formatRating(shown.imdbRating);
   const resumeVideo = resumeFor?.(item);
-  const play = watchPath(shown, resumeVideo, { auto: Boolean(resumeVideo) });
+  const play = watchPath(shown, resumeVideo, { auto: true });
   const info = titlePath(shown);
   const trailerId = heroMeta.data ? trailerYoutubeId(heroMeta.data) : null;
   const synopsis = cleanSynopsis(shown.description);

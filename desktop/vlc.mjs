@@ -65,7 +65,7 @@ export function createVlc() {
       const timer = setTimeout(() => {
         pending.delete(id);
         reject(new Error("VLC did not answer"));
-      }, 22_000);
+      }, 32_000);
       pending.set(id, {
         resolve: (value) => {
           clearTimeout(timer);

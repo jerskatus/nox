@@ -149,6 +149,15 @@ export function vlcFitArgs(fit, width, height) {
   }
 }
 
+export function vlcPlaybackReady(snap, elapsedMs = 0) {
+  const state = Number(snap?.state) || 0;
+  const playing = Boolean(snap?.playing);
+  const time = Number(snap?.time) || 0;
+  if (state === 3 || state === 4) return true;
+  if (state === 2 && (playing || time > 0) && elapsedMs >= 800) return true;
+  return false;
+}
+
 export function isHttpUrl(url) {
   try {
     const parsed = new URL(String(url ?? ""));

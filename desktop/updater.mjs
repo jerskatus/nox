@@ -6,6 +6,7 @@ const { autoUpdater } = electronUpdater;
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowDowngrade = false;
+autoUpdater.disableWebInstaller = true;
 
 let checking = false;
 let downloaded = false;
@@ -28,6 +29,10 @@ function watching() {
   }
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function offerInstall() {
   const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
   if (!win || win.isDestroyed()) return;
@@ -45,7 +50,7 @@ async function offerInstall() {
     cancelId: 1,
     noLink: true,
   });
-  if (result.response === 0) autoUpdater.quitAndInstall(false, true);
+  if (result.response === 0) installUpdate();
 }
 
 export function attachUpdater() {
@@ -53,6 +58,7 @@ export function attachUpdater() {
     provider: "github",
     owner: "jerskatus",
     repo: "nox",
+    releaseType: "release",
   });
   autoUpdater.on("checking-for-update", () => send({ status: "checking", message: "Checking for updates…" }));
   autoUpdater.on("update-available", (info) => {
@@ -82,50 +88,66 @@ export async function checkForUpdates({ silent = false } = {}) {
     if (!silent) send({ status: "idle", message: "Updates only run from an installed build." });
     return { status: "dev" };
   }
+  if (downloaded) {
+    send({ status: "ready", message: "Update ready — restart to install." });
+    return { status: "ready" };
+  }
   if (checking) return { status };
   checking = true;
   send({ status: "checking", message: "Checking for updates…" });
-  try {
-    const result = await autoUpdater.checkForUpdates();
-    checking = false;
-    if (downloaded) return { status: "ready" };
-    if (!result?.updateInfo) return { status: "idle" };
-    if (result.updateInfo.version === app.getVersion()) {
-      if (!silent) send({ status: "idle", message: "Nox is up to date." });
-      return { status: "idle" };
+  let lastError = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      checking = false;
+      if (downloaded) return { status: "ready" };
+      if (!result?.updateInfo) {
+        if (!silent) send({ status: "idle", message: "Nox is up to date." });
+        return { status: "idle", message: "Nox is up to date." };
+      }
+      if (result.updateInfo.version === app.getVersion()) {
+        if (!silent) send({ status: "idle", message: "Nox is up to date." });
+        return { status: "idle", message: "Nox is up to date." };
+      }
+      return { status: "available", version: result.updateInfo.version };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "Update check failed.";
+      if (attempt < 2) await delay(1200 * (attempt + 1));
     }
-    return { status: "available", version: result.updateInfo.version };
-  } catch (error) {
-    checking = false;
-    const raw = error instanceof Error ? error.message : "Update check failed.";
-    const message = /404|not found|Cannot find channel|latest\.yml|HttpError: 404/i.test(raw)
-      ? "Nox could not reach the update feed. Download the latest installer from Settings if this keeps happening."
-      : raw;
-    send({ status: "error", message });
-    if (!silent) {
-      const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        const choice = await dialog.showMessageBox(win, {
-          type: "info",
-          title: "Check for updates",
-          message: "Could not check for updates automatically.",
-          detail: "You can download the latest installer from the Nox releases page.",
-          buttons: ["Open downloads", "Cancel"],
-          defaultId: 0,
-          cancelId: 1,
-          noLink: true,
-        });
-        if (choice.response === 0) {
-          void shell.openExternal("https://github.com/jerskatus/nox/releases/latest");
-        }
+  }
+  checking = false;
+  const message = /404|not found|Cannot find channel|latest\.yml|HttpError: 404/i.test(lastError)
+    ? "Nox could not reach the update feed. Download the latest installer from Settings if this keeps happening."
+    : lastError || "Update check failed.";
+  send({ status: "error", message });
+  if (!silent) {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      const choice = await dialog.showMessageBox(win, {
+        type: "info",
+        title: "Check for updates",
+        message: "Could not check for updates automatically.",
+        detail: "You can download the latest installer from the Nox releases page.",
+        buttons: ["Open downloads", "Cancel"],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (choice.response === 0) {
+        void shell.openExternal("https://github.com/jerskatus/nox/releases/latest");
       }
     }
-    return { status: "error", message };
   }
+  return { status: "error", message };
 }
 
 export function installUpdate() {
-  if (downloaded) autoUpdater.quitAndInstall(false, true);
+  if (!downloaded) return;
+  try {
+    autoUpdater.quitAndInstall(false, true);
+  } catch {
+    autoUpdater.quitAndInstall();
+  }
 }
 
 export function updateStatus() {

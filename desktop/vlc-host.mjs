@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import readline from "node:readline";
-import { isHttpUrl, parseVlcTrackName, vlcFitArgs } from "./vlc-tracks.mjs";
+import { isHttpUrl, parseVlcTrackName, vlcFitArgs, vlcPlaybackReady } from "./vlc-tracks.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -279,14 +279,15 @@ async function waitForOpen(timeoutMs) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const snap = snapshot();
+    const elapsed = Date.now() - start;
     if (snap.state === 7) throw new Error(api?.libvlc_errmsg() || "VLC could not open this stream");
-    if (snap.state === 6) throw new Error("Stream ended");
-    if (snap.state === 5 && Date.now() - start > 1500) throw new Error("VLC stopped");
-    if (snap.state === 3 || snap.state === 4) return snap;
+    if (snap.state === 6 && elapsed > 2000) throw new Error("Stream ended");
+    if (snap.state === 5 && elapsed > 2500) throw new Error("VLC stopped");
+    if (vlcPlaybackReady(snap, elapsed)) return snap;
     await new Promise((r) => setTimeout(r, 120));
   }
   const snap = snapshot();
-  if (snap.state === 3 || snap.state === 4) return snap;
+  if (vlcPlaybackReady(snap, timeoutMs)) return snap;
   throw new Error("VLC could not start this stream");
 }
 
@@ -314,7 +315,7 @@ function playMedia(opts) {
   applyFit(opts.fit || currentFit, lastBounds.w, lastBounds.h);
   const code = api.libvlc_media_player_play(player);
   if (code !== 0) throw new Error(api.libvlc_errmsg() || "VLC play failed");
-  return waitForOpen(10_000);
+  return waitForOpen(18_000);
 }
 
 function stopPlayback() {

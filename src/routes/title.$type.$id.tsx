@@ -121,7 +121,7 @@ function TitleBody({ meta }: { meta: Meta }) {
   const trailer = trailerYoutubeId(meta);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const playId = progress?.videoId ?? defaultVideoId(meta);
-  const play = watchPath(meta, playId === meta.id ? undefined : playId, { auto: Boolean(progress) });
+  const play = watchPath(meta, playId === meta.id ? undefined : playId, { auto: true });
   const synopsis = cleanSynopsis(meta.description);
 
   return (

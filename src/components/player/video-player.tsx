@@ -194,6 +194,7 @@ export function VideoPlayer({
   const vlcActiveRef = useRef(false);
   const vlcTimeRef = useRef(0);
   const vlcGaveUpRef = useRef(false);
+  const engineGaveUpRef = useRef(false);
   const vlcFallbackRef = useRef<() => void>(() => undefined);
   const engineSwapRef = useRef(false);
   const engineGenRef = useRef(0);
@@ -447,6 +448,7 @@ export function VideoPlayer({
     vlcActiveRef.current = false;
     vlcTimeRef.current = 0;
     vlcGaveUpRef.current = false;
+    engineGaveUpRef.current = false;
     vlcFallbackRef.current = () => undefined;
     engineOffsetRef.current = 0;
     engineDurationRef.current = 0;
@@ -590,57 +592,72 @@ export function VideoPlayer({
 
     const loadEngine = async () => {
       const api = window.noxDesktop;
-      if (!api?.play || !api.probe) {
+      if (!api?.play) {
         loadBrowser();
         return;
       }
-      setEngineNote("Preparing cinema audio…");
+      setEngineNote("Starting…");
       const gen = engineGenRef.current;
+      const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
+      engineOffsetRef.current = startAt;
+      setTime(startAt);
       try {
-        const info = await api.probe(src);
-        if (cancelled || gen !== engineGenRef.current) return;
-        if (info.duration > 0) {
-          engineDurationRef.current = info.duration;
-          setDuration(info.duration);
-        }
-        const tracks = mapEngineTracks(info.tracks);
-        const list = mergeHintTracks(
-          tracks.length ? tracks : [{ ...originalTrack()[0]!, source: "engine" as const }],
-          audioHintsRef.current,
-        );
-        engineTracksRef.current = list;
-        setAudioTracks(list);
-        const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
-        const picked = list[pickBestAudioIndex(list, remembered)] ?? list[0]!;
-        engineAudioRef.current = picked.index;
-        engineTriedAudio.current.add(picked.index);
-        setSelectedAudio(picked.index);
-        const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
-        engineOffsetRef.current = startAt;
-        setTime(startAt);
         const result = await api.play({
           url: src,
           startAt,
-          audio: picked.index,
+          audio: engineAudioRef.current || 0,
           transcode: true,
         });
         if (cancelled || gen !== engineGenRef.current) return;
         engineActiveRef.current = true;
         setUsingEngine(true);
-        const cinema = list.some((t) => t.cinema || isCinemaAudio(t));
-        setEngineNote(cinema ? "Cinema audio · playing as AAC stereo" : null);
-        if (cinema) {
-          window.setTimeout(() => {
-            if (!cancelled) setEngineNote(null);
-          }, 3500);
-        }
+        setUsingVlc(false);
         engineSwapRef.current = true;
         video.src = result.src;
+        setEngineNote(null);
+        if (api.probe) {
+          void api.probe(src).then((info) => {
+            if (cancelled || gen !== engineGenRef.current) return;
+            if (info.duration > 0) {
+              engineDurationRef.current = info.duration;
+              setDuration(info.duration);
+            }
+            const tracks = mapEngineTracks(info.tracks);
+            const list = mergeHintTracks(
+              tracks.length ? tracks : [{ ...originalTrack()[0]!, source: "engine" as const }],
+              audioHintsRef.current,
+            );
+            engineTracksRef.current = list;
+            setAudioTracks(list);
+            const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
+            const picked = list[pickBestAudioIndex(list, remembered)] ?? list[0];
+            if (!picked) return;
+            setSelectedAudio(picked.index);
+            if (picked.index !== engineAudioRef.current) {
+              engineAudioRef.current = picked.index;
+              engineRestartRef.current(mediaTime());
+            } else {
+              engineAudioRef.current = picked.index;
+            }
+            const cinema = list.some((t) => t.cinema || isCinemaAudio(t));
+            if (cinema) {
+              setEngineNote("Cinema audio · playing as AAC stereo");
+              window.setTimeout(() => {
+                if (!cancelled) setEngineNote(null);
+              }, 3500);
+            }
+          }).catch(() => undefined);
+        }
       } catch {
         if (cancelled || gen !== engineGenRef.current) return;
-        setEngineNote(null);
+        engineGaveUpRef.current = true;
         engineActiveRef.current = false;
         setUsingEngine(false);
+        setEngineNote(null);
+        if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
+          void loadVlc();
+          return;
+        }
         if (cinemaAudio) {
           setError("This soundtrack could not be converted.");
           onPlaybackError?.();
@@ -711,8 +728,7 @@ export function VideoPlayer({
         setUsingVlc(false);
         setEngineNote(null);
         setBootKey((n) => n + 1);
-        if (desktopHasEngine() && kind !== "hls") {
-          setUsingEngine(true);
+        if (!engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
           void loadEngine();
         } else loadBrowser();
       }
@@ -720,26 +736,57 @@ export function VideoPlayer({
 
     vlcFallbackRef.current = () => {
       if (cancelled) return;
-      if (vlcGaveUpRef.current) {
-        setWaiting(false);
-        setError("This stream stalled.");
-        onPlaybackError?.();
-        return;
-      }
-      vlcGaveUpRef.current = true;
-      engineGenRef.current += 1;
-      vlcActiveRef.current = false;
-      setUsingVlc(false);
-      setWaiting(true);
       setError(null);
       setNeedsGesture(false);
       setNeedsSound(false);
+      setWaiting(true);
       setBootKey((n) => n + 1);
-      setEngineNote("Trying another player…");
-      startAtRef.current = vlcTimeRef.current || startAtRef.current;
-      void window.noxDesktop?.vlcStop?.();
-      if (desktopHasEngine() && kind !== "hls") void loadEngine();
-      else loadBrowser();
+
+      if (vlcActiveRef.current) {
+        vlcGaveUpRef.current = true;
+        vlcActiveRef.current = false;
+        setUsingVlc(false);
+        void window.noxDesktop?.vlcStop?.();
+        startAtRef.current = vlcTimeRef.current || startAtRef.current;
+        if (!engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
+          setEngineNote("Trying another player…");
+          void loadEngine();
+          return;
+        }
+        loadBrowser();
+        return;
+      }
+
+      if (engineActiveRef.current) {
+        engineGaveUpRef.current = true;
+        engineActiveRef.current = false;
+        setUsingEngine(false);
+        void window.noxDesktop?.stop?.();
+        startAtRef.current = mediaTime() || startAtRef.current;
+        if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
+          setEngineNote("Trying VLC…");
+          void loadVlc();
+          return;
+        }
+        loadBrowser();
+        return;
+      }
+
+      if (!engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
+        engineGaveUpRef.current = true;
+        setEngineNote("Trying another player…");
+        void loadEngine();
+        return;
+      }
+      if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
+        vlcGaveUpRef.current = true;
+        setEngineNote("Trying VLC…");
+        void loadVlc();
+        return;
+      }
+      setWaiting(false);
+      setError("This stream stalled.");
+      onPlaybackError?.();
     };
 
     engineRestartRef.current = (startAt: number) => {
@@ -770,12 +817,15 @@ export function VideoPlayer({
       })();
     };
 
-    if (desktopHasVlc()) void loadVlc();
-    else if (desktopHasEngine() && kind !== "hls") {
-      vlcGaveUpRef.current = true;
+    if (desktopHasEngine() && kind !== "hls") {
+      vlcGaveUpRef.current = false;
       void loadEngine();
+    } else if (desktopHasVlc() && kind !== "hls") {
+      engineGaveUpRef.current = true;
+      void loadVlc();
     } else {
       vlcGaveUpRef.current = true;
+      engineGaveUpRef.current = true;
       loadBrowser();
     }
 
@@ -865,7 +915,7 @@ export function VideoPlayer({
       }
       setError("This stream stalled.");
       onPlaybackError?.();
-    }, usingEngine || usingVlc ? 14_000 : 12_000);
+    }, usingEngine || usingVlc ? 22_000 : 14_000);
     return () => window.clearTimeout(timer);
   }, [waiting, error, src, onPlaybackError, usingEngine, usingVlc, bootKey]);
 
@@ -1473,7 +1523,14 @@ export function VideoPlayer({
           }
         }}
         onError={() => {
-          if (engineSwapRef.current) return;
+          if (engineSwapRef.current) {
+            engineSwapRef.current = false;
+            return;
+          }
+          if (isNoxDesktop()) {
+            vlcFallbackRef.current();
+            return;
+          }
           setError("Playback failed. Try another stream.");
           setPlaying(false);
           setControls(true);
