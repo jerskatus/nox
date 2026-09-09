@@ -30,6 +30,7 @@ function run(command, args, env) {
 
 await run(process.execPath, [
   join(root, "scripts", "with-app-env.mjs"),
+  process.execPath,
   join(root, "node_modules", "vite", "bin", "vite.js"),
   "build",
 ], {
