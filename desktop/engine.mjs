@@ -31,17 +31,29 @@ export function registerPrivilegedSchemes() {
 export function parseAudioStreams(stderr) {
   const tracks = [];
   let audioIndex = 0;
-  const lineRe = /Stream #\d+:(\d+)(?:\(([^)]+)\))?:\s*Audio:\s*([^\n]+)/gi;
-  let match;
-  while ((match = lineRe.exec(stderr))) {
+  const lines = String(stderr ?? "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const match = /Stream #\d+:(\d+)(?:\(([^)]+)\))?:\s*Audio:\s*(.+)/i.exec(lines[i] ?? "");
+    if (!match) continue;
     const detail = match[3] ?? "";
     const codec = (detail.split(",")[0] ?? "").trim().split(/\s+/)[0] ?? "";
     const channels =
       detail.match(/7\.1|5\.1(?:\(side\))?|stereo|mono|\d+\s*channels/i)?.[0]?.replace("(side)", "") ?? "";
+    let lang = (match[2] ?? "").trim();
+    let title = "";
+    for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+      const meta = lines[j] ?? "";
+      if (/^\s*Stream #/.test(meta)) break;
+      const langMeta = /^\s*language\s*:\s*(\S+)/i.exec(meta);
+      if (langMeta && !lang) lang = langMeta[1] ?? "";
+      const titleMeta = /^\s*title\s*:\s*(.+)/i.exec(meta);
+      if (titleMeta) title = (titleMeta[1] ?? "").trim();
+    }
     tracks.push({
       index: audioIndex,
       streamIndex: Number(match[1]),
-      lang: (match[2] ?? "").trim(),
+      lang,
+      title,
       codec,
       channels: channels.trim(),
       isDefault: /\(default\)/i.test(detail),
@@ -61,16 +73,26 @@ export function parseDuration(stderr) {
 export function pickAudioIndex(tracks, preferredLang) {
   if (!tracks.length) return 0;
   const want = (preferredLang || "eng").trim().toLowerCase();
-  const isEn = (lang) => {
-    const v = (lang ?? "").trim().toLowerCase();
+  const isEn = (value) => {
+    const v = `${value ?? ""}`.trim().toLowerCase();
     return v === "en" || v === "eng" || v === "english" || v.startsWith("en-") || v.startsWith("eng");
   };
+  const isForeign = (value) => {
+    const v = `${value ?? ""}`.trim().toLowerCase();
+    if (!v || isEn(v)) return false;
+    return /^(ita|it|italian|italiano|spa|es|spanish|fre|fr|fra|french|ger|de|deu|german|hin|hindi|jpn|ja|jap|japanese|kor|ko|korean|por|pt|rus|ru|chi|zho|zh|ara|ar)$/i.test(
+      v,
+    );
+  };
   const score = (t) => {
+    const blob = `${t.lang} ${t.title ?? ""} ${t.codec}`;
     let n = 0;
-    if (isEn(t.lang)) n += 80;
+    if (isEn(t.lang) || isEn(t.title)) n += 80;
+    if (isForeign(t.lang) || isForeign(t.title)) n -= 70;
     if (want && (t.lang.toLowerCase() === want || t.lang.toLowerCase().startsWith(want))) n += 50;
-    if (t.isDefault) n += 2;
+    if (t.isDefault && isEn(t.lang)) n += 4;
     if (/aac|mp4a|mp3|opus/.test(t.codec.toLowerCase())) n += 8;
+    if (isEn(blob)) n += 20;
     return n;
   };
   let best = 0;
@@ -175,6 +197,10 @@ export function createEngine() {
       "5",
       "-rw_timeout",
       "20000000",
+      "-probesize",
+      "20M",
+      "-analyzeduration",
+      "20M",
       "-user_agent",
       "Mozilla/5.0 (compatible; NoxDesktop/1.0)",
     ];
@@ -185,10 +211,11 @@ export function createEngine() {
     if (job.startAt > 0.5) args.push("-ss", job.startAt.toFixed(3));
     args.push("-i", job.url);
     args.push("-map", "0:v:0?");
-    args.push("-map", `0:a:${Math.max(0, job.audio)}?`);
+    args.push("-map", `0:a:${Math.max(0, job.audio)}`);
     args.push("-c:v", "copy");
     if (job.transcode) {
       args.push("-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "192k");
+      args.push("-af", "aresample=async=1:first_pts=0");
     } else {
       args.push("-c:a", "copy");
     }
@@ -207,9 +234,9 @@ export function createEngine() {
     const args = [
       "-hide_banner",
       "-probesize",
-      "5M",
+      "12M",
       "-analyzeduration",
-      "10M",
+      "12M",
       "-user_agent",
       "Mozilla/5.0 (compatible; NoxDesktop/1.0)",
     ];

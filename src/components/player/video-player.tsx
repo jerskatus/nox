@@ -16,7 +16,7 @@ import {
 import { type PointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { desktopHasEngine, type DesktopAudioTrack } from "@/lib/desktop";
-import { isEnglishLabel } from "@/lib/stremio/stream-rank";
+import { isEnglishLabel, isForeignLabel } from "@/lib/stremio/stream-rank";
 import { loadSubtitleFile } from "@/lib/stremio/client";
 import {
   type Cue,
@@ -56,6 +56,7 @@ type Props = {
   onIntroSkip?: (to: number) => void;
   onSubtitleChange?: (lang: string | null) => void;
   preferredAudioLang?: string | null;
+  cinemaAudio?: boolean;
   onAudioChange?: (lang: string | null) => void;
   onPlaybackError?: () => void;
   onSilentAudio?: () => void;
@@ -91,6 +92,7 @@ export function VideoPlayer({
   subtitles = [],
   preferredLang,
   preferredAudioLang,
+  cinemaAudio = false,
   isEpisode,
   introSkipTo,
   autoplayNext = true,
@@ -133,6 +135,9 @@ export function VideoPlayer({
   const [fitOpen, setFitOpen] = useState(false);
   const [fitFlash, setFitFlash] = useState<VideoFit | null>(null);
   const [audioTracks, setAudioTracks] = useState<AudioChoice[]>([]);
+  const audioTracksRef = useRef<AudioChoice[]>([]);
+  audioTracksRef.current = audioTracks;
+  const engineTriedAudio = useRef(new Set<number>());
   const [selectedAudio, setSelectedAudio] = useState(0);
   const [usingEngine, setUsingEngine] = useState(false);
   const [engineNote, setEngineNote] = useState<string | null>(null);
@@ -391,6 +396,7 @@ export function VideoPlayer({
     silentTries.current = 0;
     userPickedAudio.current = false;
     lastAudioLang.current = preferredAudioRef.current || "eng";
+    engineTriedAudio.current = new Set();
     setAudioTracks([]);
     setSelectedAudio(0);
     setAudioOpen(false);
@@ -460,25 +466,32 @@ export function VideoPlayer({
               useMediaCapabilities: false,
               audioPreference: { lang: "en" },
             });
+            let pickingAudio = false;
             const pickAudio = () => {
-              const tracks = mapHlsTracks(instance.audioTracks);
-              const list = tracks.length ? tracks : originalTrack();
-              setAudioTracks(list);
-              if (!tracks.length) {
-                setSelectedAudio(0);
-                return;
+              if (pickingAudio) return;
+              pickingAudio = true;
+              try {
+                const tracks = mapHlsTracks(instance.audioTracks);
+                const list = tracks.length ? tracks : originalTrack();
+                setAudioTracks(list);
+                if (!tracks.length) {
+                  setSelectedAudio(0);
+                  return;
+                }
+                const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
+                if (userPickedAudio.current) {
+                  const match = matchAudioIndex(tracks, remembered);
+                  const next = match >= 0 ? match : Math.max(0, instance.audioTrack);
+                  if (instance.audioTrack !== next) instance.audioTrack = next;
+                  setSelectedAudio(next);
+                  return;
+                }
+                const best = pickBestAudioIndex(tracks, remembered);
+                if (instance.audioTrack !== best) instance.audioTrack = best;
+                setSelectedAudio(best);
+              } finally {
+                pickingAudio = false;
               }
-              const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
-              if (userPickedAudio.current) {
-                const match = matchAudioIndex(tracks, remembered);
-                const next = match >= 0 ? match : Math.max(0, instance.audioTrack);
-                if (instance.audioTrack !== next) instance.audioTrack = next;
-                setSelectedAudio(next);
-                return;
-              }
-              const best = pickBestAudioIndex(tracks, remembered);
-              if (instance.audioTrack !== best) instance.audioTrack = best;
-              setSelectedAudio(best);
             };
             instance.on(Hls.Events.MANIFEST_PARSED, () => {
               pickAudio();
@@ -486,6 +499,10 @@ export function VideoPlayer({
             });
             instance.on(Hls.Events.AUDIO_TRACKS_UPDATED, pickAudio);
             instance.on(Hls.Events.AUDIO_TRACK_SWITCHED, () => {
+              if (!userPickedAudio.current) {
+                pickAudio();
+                return;
+              }
               setSelectedAudio(Math.max(0, instance.audioTrack));
             });
             instance.on(Hls.Events.ERROR, (_e, data) => {
@@ -510,6 +527,12 @@ export function VideoPlayer({
             instance.attachMedia(el);
             holder.hls = instance;
             hlsRef.current = instance;
+            window.setTimeout(() => {
+              if (!cancelled) pickAudio();
+            }, 400);
+            window.setTimeout(() => {
+              if (!cancelled) pickAudio();
+            }, 1400);
           } else {
             el.src = src;
           }
@@ -540,6 +563,7 @@ export function VideoPlayer({
         const remembered = lastAudioLang.current || preferredAudioRef.current || "eng";
         const picked = list[pickBestAudioIndex(list, remembered)] ?? list[0]!;
         engineAudioRef.current = picked.index;
+        engineTriedAudio.current.add(picked.index);
         setSelectedAudio(picked.index);
         const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
         engineOffsetRef.current = startAt;
@@ -567,6 +591,11 @@ export function VideoPlayer({
         setEngineNote(null);
         engineActiveRef.current = false;
         setUsingEngine(false);
+        if (cinemaAudio) {
+          setError("This soundtrack could not be converted.");
+          onPlaybackError?.();
+          return;
+        }
         loadBrowser();
       }
     };
@@ -663,7 +692,7 @@ export function VideoPlayer({
         graphRef.current = null;
       }
     };
-  }, [src, kind]);
+  }, [src, kind, cinemaAudio, onPlaybackError]);
 
   useEffect(() => {
     if (!waiting || error) return;
@@ -704,6 +733,22 @@ export function VideoPlayer({
       if (userPickedAudio.current) return;
       silentTries.current += 1;
       const hls = hlsRef.current;
+      if (engineActiveRef.current && silentTries.current <= 3) {
+        const tracks = audioTracksRef.current;
+        engineTriedAudio.current.add(engineAudioRef.current);
+        const next =
+          tracks.find(
+            (t) =>
+              !engineTriedAudio.current.has(t.index) &&
+              (isEnglishLabel(t.lang) || isEnglishLabel(t.name)),
+          ) ?? tracks.find((t) => !engineTriedAudio.current.has(t.index));
+        if (next) {
+          engineAudioRef.current = next.index;
+          setSelectedAudio(next.index);
+          engineRestartRef.current(mediaTime());
+          return;
+        }
+      }
       if (!engineActiveRef.current && silentTries.current === 1 && hls) {
         try {
           hls.swapAudioCodec();
@@ -1849,7 +1894,7 @@ function mapEngineTracks(tracks: DesktopAudioTrack[]): AudioChoice[] {
   return tracks.map((t) => ({
     id: `engine-${t.index}-${t.lang}-${t.codec}`,
     index: t.index,
-    name: t.lang || t.codec || `Track ${t.index + 1}`,
+    name: t.title || t.lang || t.codec || `Track ${t.index + 1}`,
     lang: t.lang,
     codec: t.codec,
     channels: t.channels,
@@ -1887,12 +1932,14 @@ function pickBestAudioIndex(tracks: AudioChoice[], preferred?: string | null) {
 function scoreAudioTrack(track: AudioChoice, preferred?: string | null) {
   const blob = `${track.name} ${track.lang} ${track.codec}`.toLowerCase();
   let score = 0;
-  if (isEnglishLabel(track.lang) || isEnglishLabel(track.name)) score += 100;
+  if (isEnglishLabel(track.lang) || isEnglishLabel(track.name)) score += 120;
+  if (isForeignLabel(track.lang) || isForeignLabel(track.name)) score -= 90;
   if (preferred && (langsMatch(track.lang, preferred) || langsMatch(track.name, preferred))) score += 50;
   if (track.source !== "engine" && isCinemaAudio(track)) score -= 20;
   if (/mp4a|aac/.test(blob)) score += 20;
   if (track.channels === "2" || track.channels.startsWith("2.")) score += 4;
-  if (track.isDefault) score += 2;
+  if (track.isDefault && (isEnglishLabel(track.lang) || isEnglishLabel(track.name))) score += 6;
+  else if (track.isDefault && (isForeignLabel(track.lang) || isForeignLabel(track.name))) score -= 8;
   return score;
 }
 

@@ -1,7 +1,7 @@
 import type { Stream } from "./types";
 
 function blob(stream: Stream) {
-  return `${stream.name ?? ""} ${stream.title ?? ""} ${stream.description ?? ""} ${stream.behaviorHints?.filename ?? ""} ${stream.url ?? ""}`.toLowerCase();
+  return `${stream.name ?? ""} ${stream.title ?? ""} ${stream.description ?? ""} ${stream.behaviorHints?.filename ?? ""} ${stream.behaviorHints?.bingeGroup ?? ""} ${stream.url ?? ""}`.toLowerCase();
 }
 
 function kindOf(stream: Stream) {
@@ -34,11 +34,11 @@ const CAM_MARK = /\b(?:cam|hdcam|hdts|telesync|telecine|scr|screener|camrip)\b/i
 const CINEMA_AUDIO = /\b(?:atmos|truehd|dts(?:-hd)?(?:\s*ma)?|dd[p+]|ddp|e-?ac-?3|eac3|ac-?3)\b/i;
 const AAC_AUDIO = /\b(?:aac(?:[.\s-]?lc)?|mp4a|mp3|opus|vorbis|stereo|2\.0|2ch)\b/i;
 const AVC_VIDEO = /\b(?:x264|h\.?264|avc)\b/i;
-const TOKEN_EDGE = String.raw`(?:^|[\s.[(\]_{,+\-])`;
-const TOKEN_END = String.raw`(?=$|[\s.\])}_,+\-])`;
+const TOKEN_EDGE = String.raw`(?:^|[\s.[(\]_{,+\-|/&])`;
+const TOKEN_END = String.raw`(?=$|[\s.\])}_,+\-|/&])`;
 const ENGLISH_AUDIO = new RegExp(`${TOKEN_EDGE}(?:english|eng|en-us|en-gb|en)${TOKEN_END}`, "i");
 const FOREIGN_CODE = new RegExp(
-  `${TOKEN_EDGE}(hin|tam|tel|mal|kan|mar|ben|pan|urd|lat|spa|fre|fra|vfq|vff|vostfr|ger|deu|ita|por|pt-br|rus|jpn|jap|kor|chi|zho|ara|tha|vie|pol|tur|dut|nld|swe|nor|dan|fin|hun|cze|gre|heb|rum|ukr|ind|fil)${TOKEN_END}`,
+  `${TOKEN_EDGE}(hin|tam|tel|mal|kan|mar|ben|pan|urd|lat|spa|fre|fra|vfq|vff|vostfr|ger|deu|ita|it|por|pt-br|rus|jpn|jap|kor|chi|zho|ara|tha|vie|pol|tur|dut|nld|swe|nor|dan|fin|hun|cze|gre|heb|rum|ukr|ind|fil)${TOKEN_END}`,
   "i",
 );
 const FOREIGN_NAME =
@@ -49,8 +49,122 @@ const FOREIGN_NAME_TAG = new RegExp(
   "i",
 );
 const DUAL_AUDIO = /\bdual(?:[\s._-]*audio)?\b|\bmulti(?:[\s._-]*(?:audio|lang|language))?\b/i;
+const FLAG_RE = /\p{Regional_Indicator}{2}/gu;
+const EN_FLAG = new Set(["us", "gb", "au", "ca", "nz", "ie"]);
+const FLAG_LANG: Record<string, string> = {
+  us: "en",
+  gb: "en",
+  au: "en",
+  ca: "en",
+  nz: "en",
+  ie: "en",
+  it: "it",
+  es: "es",
+  mx: "es",
+  ar: "es",
+  fr: "fr",
+  de: "de",
+  in: "hi",
+  jp: "ja",
+  kr: "ko",
+  br: "pt",
+  pt: "pt",
+  ru: "ru",
+  cn: "zh",
+  tw: "zh",
+  hk: "zh",
+  nl: "nl",
+  pl: "pl",
+  tr: "tr",
+  sa: "ar",
+  ae: "ar",
+  se: "sv",
+  no: "no",
+  dk: "da",
+  fi: "fi",
+  hu: "hu",
+  cz: "cs",
+  gr: "el",
+  il: "he",
+  ro: "ro",
+  ua: "uk",
+  id: "id",
+  ph: "tl",
+  th: "th",
+  vn: "vi",
+};
 
 export type SpokenLang = "en" | "foreign" | "dual" | "unknown";
+
+export function isEnglishLabel(value?: string | null) {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  if (!v) return false;
+  if (v === "en" || v === "eng" || v === "english" || v === "en-us" || v === "en-gb" || v === "en-au") return true;
+  if (v.startsWith("en-") || v.startsWith("eng")) return true;
+  return ENGLISH_AUDIO.test(v);
+}
+
+export function isForeignLabel(value?: string | null) {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  if (!v || isEnglishLabel(v)) return false;
+  if (FOREIGN_CODE.test(v) || FOREIGN_NAME_WORD.test(v)) return true;
+  if (v === "it" || v === "ita" || v === "italiano" || v === "italian") return true;
+  return false;
+}
+
+export function spokenFrom(text: string): SpokenLang {
+  const flags = flagCodes(text);
+  const flagEn = flags.some((code) => EN_FLAG.has(code));
+  const flagForeign = flags.some((code) => !EN_FLAG.has(code));
+  const en = ENGLISH_AUDIO.test(text) || flagEn;
+  const foreign = FOREIGN_CODE.test(text) || hasForeignName(text) || flagForeign;
+  const dual = DUAL_AUDIO.test(text);
+  if (dual || (en && foreign)) return "dual";
+  if (en) return "en";
+  if (foreign) return "foreign";
+  return "unknown";
+}
+
+function flagCodes(text: string): string[] {
+  const codes: string[] = [];
+  for (const match of text.matchAll(FLAG_RE)) {
+    const flag = match[0];
+    const a = flag.codePointAt(0);
+    const b = flag.codePointAt(2);
+    if (a == null || b == null) continue;
+    const c1 = a - 0x1f1e6;
+    const c2 = b - 0x1f1e6;
+    if (c1 < 0 || c1 > 25 || c2 < 0 || c2 > 25) continue;
+    codes.push(String.fromCharCode(97 + c1, 97 + c2));
+  }
+  return codes;
+}
+
+function hasForeignName(text: string) {
+  for (const block of text.matchAll(/[\[(]([^)\]]+)[\])]/g)) {
+    if (FOREIGN_NAME_WORD.test(block[1] ?? "")) return true;
+  }
+  const year = text.search(/(?:19|20)\d{2}/);
+  if (year >= 0 && FOREIGN_NAME_WORD.test(text.slice(year))) return true;
+  return FOREIGN_NAME_TAG.test(text);
+}
+
+export function streamSpokenLabel(stream: Stream) {
+  const text = blob(stream);
+  const spoken = spokenFrom(text);
+  if (spoken === "en") return "English";
+  if (spoken === "dual") return "Dual audio";
+  if (spoken === "foreign") {
+    const named = text.match(new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i"));
+    const coded = text.match(FOREIGN_CODE);
+    const flagged = flagCodes(text).find((code) => !EN_FLAG.has(code));
+    const raw = (named?.[0] ?? coded?.[1] ?? coded?.[0] ?? flagged ?? FLAG_LANG[flagged ?? ""] ?? "").trim();
+    return prettyLang(raw) || "Not English";
+  }
+  return null;
+}
 
 export type StreamFlags = {
   cached: boolean;
@@ -145,9 +259,10 @@ export function streamScore(stream: Stream, opts?: { desktop?: boolean }) {
   if (flags.av1) score += 10;
   else if (flags.hevc) score += 8;
   if (flags.cam) score -= 400;
-  if (flags.spoken === "foreign") score -= 2500;
-  else if (flags.spoken === "en") score += 80;
-  else if (flags.spoken === "dual") score += 40;
+  if (flags.spoken === "foreign") score -= 20_000;
+  else if (flags.spoken === "en") score += 400;
+  else if (flags.spoken === "dual") score += 80;
+  else score += 70;
   if (flags.seeds != null) score += Math.min(80, Math.log10(flags.seeds + 1) * 28);
   score += sizeScore(stream);
   return score;
@@ -163,48 +278,6 @@ export function playableStreams(streams: Stream[]) {
     const kind = kindOf(stream);
     return kind === "http" || kind === "hls" || kind === "youtube";
   });
-}
-
-export function isEnglishLabel(value?: string | null) {
-  if (!value) return false;
-  const v = value.trim().toLowerCase();
-  if (!v) return false;
-  if (v === "en" || v === "eng" || v === "english" || v === "en-us" || v === "en-gb") return true;
-  if (v.startsWith("en-") || v.startsWith("eng")) return true;
-  return ENGLISH_AUDIO.test(v);
-}
-
-export function spokenFrom(text: string): SpokenLang {
-  const en = ENGLISH_AUDIO.test(text);
-  const foreign = FOREIGN_CODE.test(text) || hasForeignName(text);
-  const dual = DUAL_AUDIO.test(text);
-  if (dual || (en && foreign)) return "dual";
-  if (en) return "en";
-  if (foreign) return "foreign";
-  return "unknown";
-}
-
-function hasForeignName(text: string) {
-  for (const block of text.matchAll(/[\[(]([^)\]]+)[\])]/g)) {
-    if (FOREIGN_NAME_WORD.test(block[1] ?? "")) return true;
-  }
-  const year = text.search(/(?:19|20)\d{2}/);
-  if (year >= 0 && FOREIGN_NAME_WORD.test(text.slice(year))) return true;
-  return FOREIGN_NAME_TAG.test(text);
-}
-
-export function streamSpokenLabel(stream: Stream) {
-  const text = blob(stream);
-  const spoken = spokenFrom(text);
-  if (spoken === "en") return "English";
-  if (spoken === "dual") return "Dual audio";
-  if (spoken === "foreign") {
-    const named = text.match(new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i"));
-    const coded = text.match(FOREIGN_CODE);
-    const raw = (named?.[0] ?? coded?.[1] ?? coded?.[0] ?? "").trim();
-    return prettyLang(raw) || "Not English";
-  }
-  return null;
 }
 
 function prettyLang(raw: string) {
@@ -238,6 +311,7 @@ function prettyLang(raw: string) {
     german: "German",
     deutsch: "German",
     ita: "Italian",
+    it: "Italian",
     italian: "Italian",
     italiano: "Italian",
     por: "Portuguese",

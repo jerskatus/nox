@@ -204,6 +204,7 @@ function installMenu() {
 
 app.setName("Nox");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+app.commandLine.appendSwitch("lang", "en-US");
 
 const engine = createEngine();
 

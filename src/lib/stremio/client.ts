@@ -362,13 +362,12 @@ export function pickRememberedStream(
 }
 
 export function firstPlayableStream(streams: Stream[]) {
-  return (
-    streams.find((stream) => {
-      if (!isWebPlayable(stream)) return false;
-      const kind = streamKind(stream);
-      return kind === "http" || kind === "hls" || kind === "youtube";
-    }) ?? null
-  );
+  const playable = streams.filter((stream) => {
+    if (!isWebPlayable(stream)) return false;
+    const kind = streamKind(stream);
+    return kind === "http" || kind === "hls" || kind === "youtube";
+  });
+  return playable.find((stream) => streamFlags(stream).spoken !== "foreign") ?? playable[0] ?? null;
 }
 
 function streamKeyOf(stream: Stream) {

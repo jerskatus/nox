@@ -204,6 +204,8 @@ function WatchPage() {
   function tryNextStream(opts?: { silent?: boolean }) {
     if (picked) failedKeys.current.add(picked);
     let playable = playableStreams(ranked).filter((s) => !failedKeys.current.has(streamKey(s)));
+    const english = playable.filter((s) => streamFlags(s).spoken !== "foreign");
+    if (english.length) playable = english;
     if (opts?.silent && !desktop) {
       const safe = playable.filter((s) => !streamFlags(s).cinemaAudio);
       if (safe.length) playable = safe;
@@ -295,6 +297,7 @@ function WatchPage() {
         subtitles={tracks}
         preferredLang={subtitleMode === "en" ? "eng" : subtitleMode === "last" ? pref?.subtitleLang : undefined}
         preferredAudioLang="eng"
+        cinemaAudio={streamFlags(selected).cinemaAudio}
         isEpisode={type === "series" || Boolean(episode)}
         introSkipTo={pref?.introSkipTo}
         autoplayNext={autoplayNext && Boolean(nextId)}

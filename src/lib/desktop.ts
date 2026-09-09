@@ -8,6 +8,7 @@ export type DesktopAudioTrack = {
   channels: string;
   isDefault?: boolean;
   cinema?: boolean;
+  title?: string;
 };
 
 export type NoxDesktop = {
