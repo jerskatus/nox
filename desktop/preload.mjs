@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 const win32 = process.platform === "win32";
 
 contextBridge.exposeInMainWorld("noxDesktop", {
-  version: "1.3.0",
+  version: "1.3.2",
   hasEngine: true,
   hasVlc: win32,
   standalone: true,
@@ -34,4 +34,7 @@ contextBridge.exposeInMainWorld("noxDesktop", {
     ipcRenderer.on("nox:update-status", listener);
     return () => ipcRenderer.removeListener("nox:update-status", listener);
   },
+  persistGet: (key) => ipcRenderer.invoke("nox:persist-get", key),
+  persistSet: (key, value) => ipcRenderer.invoke("nox:persist-set", key, value),
+  persistRemove: (key) => ipcRenderer.invoke("nox:persist-remove", key),
 });

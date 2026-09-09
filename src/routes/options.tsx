@@ -223,9 +223,9 @@ function DesktopSection() {
               You’re in the Nox app
             </p>
             <p className="mt-2 text-sm text-muted">
-              This copy runs on your computer — no website required. New versions download themselves; Nox asks to
-              restart when one is ready. Windows uses a built-in VLC engine so Atmos, DTS, and AC3 play as they
-              were mixed.
+              This copy runs on your computer — no website required. Add-ons and options are saved on this PC.
+              New versions download themselves; Nox asks to restart when one is ready. Windows uses a built-in
+              VLC engine so Atmos, DTS, and AC3 play as they were mixed.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button

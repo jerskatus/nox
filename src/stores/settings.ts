@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { persistStorage } from "@/lib/persist-storage";
 
 export const THEMES = [
   { id: "nox", label: "Nox", hint: "Classic red", accent: "#e50914", bg: "#000000" },
@@ -110,6 +111,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "nox-settings",
       skipHydration: true,
+      storage: persistStorage,
       merge: (persisted, current) => {
         const stored = (persisted ?? {}) as Partial<SettingsState>;
         return {

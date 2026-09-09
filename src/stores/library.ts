@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { persistStorage } from "@/lib/persist-storage";
 import type { MetaPreview } from "@/lib/stremio/types";
 
 export type ProgressItem = {
@@ -85,6 +86,7 @@ export const useLibraryStore = create<LibraryState>()(
     {
       name: "nox-library",
       skipHydration: true,
+      storage: persistStorage,
       partialize: (state) => ({
         list: state.list,
         progress: state.progress,

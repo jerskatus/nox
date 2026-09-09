@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.1 fixes a Windows crash on launch (spawn Nox.exe ENOENT) when starting the catalog or VLC helper.
+            1.3.2 keeps add-ons, settings, and watch progress on disk so they survive a restart. Auto-update reads the public Nox releases feed.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

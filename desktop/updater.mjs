@@ -49,6 +49,11 @@ async function offerInstall() {
 }
 
 export function attachUpdater() {
+  autoUpdater.setFeedURL({
+    provider: "github",
+    owner: "jerskatus",
+    repo: "nox",
+  });
   autoUpdater.on("checking-for-update", () => send({ status: "checking" }));
   autoUpdater.on("update-available", (info) => {
     send({ status: "available", version: info.version, message: `Downloading Nox ${info.version}…` });
@@ -92,7 +97,10 @@ export async function checkForUpdates({ silent = false } = {}) {
     return { status: "available", version: result.updateInfo.version };
   } catch (error) {
     checking = false;
-    const message = error instanceof Error ? error.message : "Update check failed.";
+    const raw = error instanceof Error ? error.message : "Update check failed.";
+    const message = /404|not found|Cannot find channel|latest\.yml|HttpError: 404/i.test(raw)
+      ? "Nox could not reach the update feed. Download the latest installer from Options if this keeps happening."
+      : raw;
     send({ status: "error", message });
     if (!silent) {
       const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];

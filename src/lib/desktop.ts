@@ -77,6 +77,9 @@ export type NoxDesktop = {
   checkForUpdates?: () => Promise<DesktopUpdateStatus>;
   installUpdate?: () => Promise<void>;
   onUpdateStatus?: (callback: (payload: DesktopUpdateStatus) => void) => () => void;
+  persistGet?: (key: string) => Promise<string | null>;
+  persistSet?: (key: string, value: string) => Promise<void>;
+  persistRemove?: (key: string) => Promise<void>;
 };
 
 declare global {

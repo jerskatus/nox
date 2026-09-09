@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { persistStorage } from "@/lib/persist-storage";
 import { DEFAULT_ADDONS, STREAMING_CATALOGS_MANIFEST } from "@/lib/stremio/defaults";
 import { STREAMING_CATALOGS_URL } from "@/lib/stremio/urls";
 import type { InstalledAddon, Manifest } from "@/lib/stremio/types";
@@ -54,6 +55,7 @@ export const useAddonStore = create<AddonState>()(
     {
       name: "nox-addons",
       skipHydration: true,
+      storage: persistStorage,
       partialize: (state) => ({ addons: state.addons }),
       merge: (persisted, current) => {
         const stored = (persisted as { addons?: InstalledAddon[] } | undefined)?.addons;

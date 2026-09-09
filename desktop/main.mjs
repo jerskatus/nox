@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createEngine, registerPrivilegedSchemes } from "./engine.mjs";
 import { hasLocalCatalog, startCatalog, stopCatalog } from "./catalog.mjs";
 import { attachUpdater, checkForUpdates, installUpdate } from "./updater.mjs";
+import { attachPersist } from "./persist.mjs";
 import { createVlc } from "./vlc.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -240,6 +241,7 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     engine.attach();
+    attachPersist();
     attachUpdater();
     ipcMain.handle("nox:info", () => ({
       version: app.getVersion(),

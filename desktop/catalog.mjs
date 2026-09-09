@@ -20,7 +20,25 @@ function catalogEntry(dir) {
   return null;
 }
 
-function freePort() {
+const CATALOG_PORT = 17865;
+
+function portFree(port) {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+async function catalogPort() {
+  if (await portFree(CATALOG_PORT)) return CATALOG_PORT;
+  for (let n = 1; n <= 9; n++) {
+    const port = CATALOG_PORT + n;
+    if (await portFree(port)) return port;
+  }
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.unref();
@@ -60,7 +78,7 @@ export async function startCatalog() {
   const dir = catalogDir();
   const entry = catalogEntry(dir);
   if (!entry) throw new Error("Nox catalog is missing from this install.");
-  const port = await freePort();
+  const port = await catalogPort();
   let spawnError = null;
   const child = runNodeScript(entry, {
     cwd: dir,
