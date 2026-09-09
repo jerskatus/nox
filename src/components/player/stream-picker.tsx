@@ -2,7 +2,7 @@ import { ArrowLeft, ExternalLink, Languages, Magnet, Play, Puzzle, Zap } from "l
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { streamKind } from "@/lib/stremio/client";
-import { streamFlags, streamSpokenLabel } from "@/lib/stremio/stream-rank";
+import { streamFlags, streamSpokenFlags, streamSpokenLabel } from "@/lib/stremio/stream-rank";
 import { streamDetailLines, streamQuality, streamSizeLabel } from "@/lib/stremio/subtitles";
 import type { Stream } from "@/lib/stremio/types";
 import { cn } from "@/lib/utils";
@@ -90,9 +90,12 @@ export function StreamPicker({
                 onClick={() => onPick(preferred)}
                 className="mb-6 flex w-full items-center gap-4 rounded-lg bg-fg px-4 py-3.5 text-left text-bg touch-manipulation"
               >
-                <span className="w-16 shrink-0 sm:w-20">
-                  <span className="block text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
-                    {streamQuality(preferred) ?? "Play"}
+                <span className="w-16 shrink-0 sm:w-24">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
+                      {streamQuality(preferred) ?? "Play"}
+                    </span>
+                    <AudioFlags stream={preferred} />
                   </span>
                   <span className="mt-1 block text-2xs font-semibold uppercase tracking-wide opacity-70">Last used</span>
                 </span>
@@ -141,6 +144,7 @@ export function StreamPicker({
                       <StreamSection
                         key={group.name}
                         title={group.name}
+                        icon={<span className="text-base leading-none">{group.flags}</span>}
                         count={group.streams.length}
                         streams={group.streams}
                         selectedKey={selectedKey}
@@ -242,7 +246,11 @@ function groupByLanguage(streams: Stream[]) {
     map.set(name, list);
   }
   return [...map.entries()]
-    .map(([name, list]) => ({ name, streams: list }))
+    .map(([name, list]) => ({
+      name,
+      streams: list,
+      flags: streamSpokenFlags(list[0]!).map((flag) => flag.emoji).join(""),
+    }))
     .sort((a, b) => b.streams.length - a.streams.length || a.name.localeCompare(b.name));
 }
 
@@ -290,9 +298,12 @@ function StreamChoice({
           active ? "bg-elevated" : "bg-surface hover:bg-elevated",
         )}
       >
-        <span className="w-16 shrink-0 sm:w-20">
-          <span className="block text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
-            {headline}
+        <span className="w-16 shrink-0 sm:w-24">
+          <span className="flex items-center gap-1.5">
+            <span className="text-lg font-semibold leading-none tracking-tight tabular-nums sm:text-xl">
+              {headline}
+            </span>
+            <AudioFlags stream={stream} />
           </span>
           {size ? <span className="mt-1 block text-2xs text-muted">{size}</span> : null}
         </span>
@@ -325,5 +336,18 @@ function StreamChoice({
         </span>
       </button>
     </li>
+  );
+}
+
+function AudioFlags({ stream }: { stream: Stream }) {
+  const flags = streamSpokenFlags(stream);
+  if (flags.length === 0) return null;
+  const label = flags.map((flag) => flag.label).join(" + ");
+  return (
+    <span className="inline-flex items-center gap-0.5 text-base leading-none" title={label} aria-label={label}>
+      {flags.map((flag) => (
+        <span key={flag.code}>{flag.emoji}</span>
+      ))}
+    </span>
   );
 }

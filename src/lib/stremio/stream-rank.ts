@@ -94,6 +94,131 @@ const FLAG_LANG: Record<string, string> = {
   vn: "vi",
 };
 
+const LANG_CC: Record<string, string> = {
+  en: "gb",
+  eng: "gb",
+  english: "gb",
+  it: "it",
+  ita: "it",
+  italian: "it",
+  italiano: "it",
+  es: "es",
+  spa: "es",
+  spanish: "es",
+  latino: "mx",
+  lat: "mx",
+  castellano: "es",
+  espanol: "es",
+  español: "es",
+  fr: "fr",
+  fre: "fr",
+  fra: "fr",
+  french: "fr",
+  francais: "fr",
+  français: "fr",
+  vostfr: "fr",
+  vff: "fr",
+  vfq: "ca",
+  de: "de",
+  ger: "de",
+  deu: "de",
+  german: "de",
+  deutsch: "de",
+  hi: "in",
+  hin: "in",
+  hindi: "in",
+  ta: "in",
+  tam: "in",
+  tamil: "in",
+  te: "in",
+  tel: "in",
+  telugu: "in",
+  ml: "in",
+  mal: "in",
+  malayalam: "in",
+  kn: "in",
+  kan: "in",
+  kannada: "in",
+  ja: "jp",
+  jpn: "jp",
+  jap: "jp",
+  japanese: "jp",
+  ko: "kr",
+  kor: "kr",
+  korean: "kr",
+  zh: "cn",
+  chi: "cn",
+  zho: "cn",
+  chinese: "cn",
+  mandarin: "cn",
+  cantonese: "hk",
+  pt: "pt",
+  por: "pt",
+  portuguese: "pt",
+  brazilian: "br",
+  "pt-br": "br",
+  ru: "ru",
+  rus: "ru",
+  russian: "ru",
+  ar: "sa",
+  ara: "sa",
+  arabic: "sa",
+  nl: "nl",
+  dut: "nl",
+  nld: "nl",
+  dutch: "nl",
+  nederlands: "nl",
+  pl: "pl",
+  pol: "pl",
+  polish: "pl",
+  tr: "tr",
+  tur: "tr",
+  turkish: "tr",
+  sv: "se",
+  swe: "se",
+  swedish: "se",
+  no: "no",
+  nor: "no",
+  norwegian: "no",
+  da: "dk",
+  dan: "dk",
+  danish: "dk",
+  fi: "fi",
+  fin: "fi",
+  finnish: "fi",
+  hu: "hu",
+  hun: "hu",
+  hungarian: "hu",
+  cs: "cz",
+  cze: "cz",
+  czech: "cz",
+  el: "gr",
+  gre: "gr",
+  greek: "gr",
+  he: "il",
+  heb: "il",
+  hebrew: "il",
+  ro: "ro",
+  rum: "ro",
+  romanian: "ro",
+  uk: "ua",
+  ukr: "ua",
+  ukrainian: "ua",
+  id: "id",
+  ind: "id",
+  indonesian: "id",
+  tl: "ph",
+  fil: "ph",
+  filipino: "ph",
+  tagalog: "ph",
+  th: "th",
+  tha: "th",
+  thai: "th",
+  vi: "vn",
+  vie: "vn",
+  vietnamese: "vn",
+};
+
 export type SpokenLang = "en" | "foreign" | "dual" | "unknown";
 
 export function isEnglishLabel(value?: string | null) {
@@ -334,4 +459,70 @@ function prettyLang(raw: string) {
   if (names[key]) return names[key];
   if (!raw) return null;
   return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+export function countryFlag(code: string) {
+  const cc = code.trim().toLowerCase();
+  if (!/^[a-z]{2}$/.test(cc)) return "";
+  return String.fromCodePoint(0x1f1e6 + cc.charCodeAt(0) - 97, 0x1f1e6 + cc.charCodeAt(1) - 97);
+}
+
+export type SpokenFlag = {
+  emoji: string;
+  code: string;
+  label: string;
+};
+
+function ccForLang(raw: string) {
+  const key = raw.trim().toLowerCase();
+  if (!key) return null;
+  if (LANG_CC[key]) return LANG_CC[key];
+  if (key.length === 2 && (FLAG_LANG[key] || LANG_CC[key])) return LANG_CC[key] ?? key;
+  return LANG_CC[key.slice(0, 3)] ?? LANG_CC[key.slice(0, 2)] ?? null;
+}
+
+export function spokenFlagsFromText(text: string): SpokenFlag[] {
+  const spoken = spokenFrom(text);
+  const existing = flagCodes(text);
+  const out: SpokenFlag[] = [];
+  const seen = new Set<string>();
+  const add = (cc: string | null | undefined) => {
+    if (!cc) return;
+    const code = cc.toLowerCase();
+    if (seen.has(code)) return;
+    const emoji = countryFlag(code);
+    if (!emoji) return;
+    seen.add(code);
+    const lang = FLAG_LANG[code] ?? code;
+    out.push({ emoji, code, label: prettyLang(lang) || code.toUpperCase() });
+  };
+  for (const cc of existing) add(cc);
+  const compact = text.replace(/\s+/g, " ").trim();
+  const labelLike = compact.length > 0 && compact.length <= 28 && !/\d{3,}/.test(compact);
+  if (out.length === 0 && labelLike) {
+    if (isEnglishLabel(compact)) add("gb");
+    else {
+      const named = compact.match(new RegExp(`^(?:${FOREIGN_NAME})$`, "i"));
+      const coded = compact.match(FOREIGN_CODE);
+      add(ccForLang(named?.[0] ?? coded?.[1] ?? coded?.[0] ?? compact));
+    }
+    if (out.length === 0) add("gb");
+    return out;
+  }
+  if (out.length === 0) {
+    if (spoken === "en" || spoken === "unknown") add("gb");
+    else {
+      const named = text.match(new RegExp(`\\b(?:${FOREIGN_NAME})\\b`, "i"));
+      const coded = text.match(FOREIGN_CODE);
+      add(ccForLang(named?.[0] ?? coded?.[1] ?? coded?.[0] ?? ""));
+      if (spoken === "dual") add("gb");
+    }
+  } else if (spoken === "dual" && !existing.some((code) => EN_FLAG.has(code))) {
+    add("gb");
+  }
+  return out;
+}
+
+export function streamSpokenFlags(stream: Stream) {
+  return spokenFlagsFromText(blob(stream));
 }

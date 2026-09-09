@@ -16,7 +16,7 @@ import {
 import { type PointerEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { desktopHasEngine, type DesktopAudioTrack } from "@/lib/desktop";
-import { isEnglishLabel, isForeignLabel } from "@/lib/stremio/stream-rank";
+import { isEnglishLabel, isForeignLabel, spokenFlagsFromText } from "@/lib/stremio/stream-rank";
 import { loadSubtitleFile } from "@/lib/stremio/client";
 import {
   type Cue,
@@ -1413,7 +1413,10 @@ export function VideoPlayer({
                         {on ? <Check className="size-4" /> : null}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{audioTrackTitle(track)}</span>
+                        <span className="flex items-center gap-2">
+                          <AudioLangFlags lang={track.lang} name={track.name} />
+                          <span className="block truncate text-sm font-medium">{audioTrackTitle(track)}</span>
+                        </span>
                         <span className={cn("block truncate text-xs", on ? "text-bg/70" : "text-muted")}>
                           {audioTrackMeta(track, usingEngine)}
                         </span>
@@ -1947,6 +1950,18 @@ function isCinemaAudio(track: AudioChoice) {
   if (track.cinema) return true;
   const blob = `${track.name} ${track.lang} ${track.codec}`.toLowerCase();
   return /ac-3|ec-3|ac3|eac3|dts|truehd|atmos/.test(blob);
+}
+
+function AudioLangFlags({ lang, name }: { lang: string; name: string }) {
+  const flags = spokenFlagsFromText(`${lang} ${name}`);
+  if (flags.length === 0) return null;
+  return (
+    <span className="shrink-0 text-base leading-none" title={flags.map((flag) => flag.label).join(" + ")}>
+      {flags.map((flag) => (
+        <span key={flag.code}>{flag.emoji}</span>
+      ))}
+    </span>
+  );
 }
 
 function audioTrackTitle(track: AudioChoice) {
