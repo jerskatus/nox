@@ -54,7 +54,7 @@ export function attachUpdater() {
     owner: "jerskatus",
     repo: "nox",
   });
-  autoUpdater.on("checking-for-update", () => send({ status: "checking" }));
+  autoUpdater.on("checking-for-update", () => send({ status: "checking", message: "Checking for updates…" }));
   autoUpdater.on("update-available", (info) => {
     send({ status: "available", version: info.version, message: `Downloading Nox ${info.version}…` });
   });
@@ -84,7 +84,7 @@ export async function checkForUpdates({ silent = false } = {}) {
   }
   if (checking) return { status };
   checking = true;
-  send({ status: "checking" });
+  send({ status: "checking", message: "Checking for updates…" });
   try {
     const result = await autoUpdater.checkForUpdates();
     checking = false;

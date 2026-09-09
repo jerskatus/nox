@@ -1,8 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Monitor } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DESKTOP_RELEASES_URL, isNoxDesktop } from "@/lib/desktop";
+import {
+  DESKTOP_RELEASES_URL,
+  fetchLatestDesktopRelease,
+  isNoxDesktop,
+  updateStatusLabel,
+  type DesktopUpdateStatus,
+} from "@/lib/desktop";
 import {
   THEMES,
   useSettingsStore,
@@ -51,7 +57,7 @@ function OptionsPage() {
       <h1 className="text-3xl font-semibold">Options</h1>
       <p className="mt-2 mb-10 text-muted">Playback, search, and how Nox looks.</p>
 
-      <DesktopSection />
+      <UpdatesSection />
 
       <Section title="Playback">
         <Row
@@ -200,63 +206,101 @@ function OptionsPage() {
   );
 }
 
-function DesktopSection() {
+function UpdatesSection() {
   const [desktop, setDesktop] = useState(false);
-  const [updateNote, setUpdateNote] = useState("");
+  const [version, setVersion] = useState("");
+  const [status, setStatus] = useState<DesktopUpdateStatus>({ status: "idle" });
+  const [busy, setBusy] = useState(false);
+
   useEffect(() => {
-    setDesktop(isNoxDesktop());
-    const stop = window.noxDesktop?.onUpdateStatus?.((payload) => {
-      setUpdateNote(payload.message || "");
+    const api = window.noxDesktop;
+    setDesktop(Boolean(api) || isNoxDesktop());
+    setVersion(api?.version ?? "");
+    const stop = api?.onUpdateStatus?.((payload) => {
+      setStatus(payload);
+      setBusy(payload.status === "checking" || payload.status === "downloading");
     });
     return () => {
       stop?.();
     };
   }, []);
 
+  async function onCheck() {
+    setBusy(true);
+    setStatus({ status: "checking", message: "Checking for updates…" });
+    try {
+      if (window.noxDesktop?.checkForUpdates) {
+        const result = await window.noxDesktop.checkForUpdates();
+        if (result) {
+          setStatus((prev) => {
+            const next = { ...prev, ...result };
+            return { ...next, message: updateStatusLabel(next) || prev.message };
+          });
+        }
+        return;
+      }
+      setStatus(await fetchLatestDesktopRelease());
+    } catch {
+      setStatus({ status: "error", message: "Could not check for updates." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const note = updateStatusLabel(status);
+  const ready = status.status === "ready";
+  const hint = desktop
+    ? version
+      ? `This copy is Nox ${version}. New versions download themselves — you can also check now.`
+      : "New versions download themselves. You can also check now."
+    : "Looks up the latest Windows installer. Install that app if you want updates on this computer.";
+
   return (
-    <Section title="Desktop app">
-      <div className="bg-surface px-4 py-5">
-        {desktop ? (
-          <>
-            <p className="flex items-center gap-2 font-medium">
-              <Monitor className="size-4 text-accent" />
-              You’re in the Nox app
-            </p>
-            <p className="mt-2 text-sm text-muted">
-              This copy runs on your computer — no website required. Add-ons and options are saved on this PC.
-              New versions download themselves; Nox asks to restart when one is ready. Windows uses a built-in
-              VLC engine so Atmos, DTS, and AC3 play as they were mixed.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                variant="play"
-                onClick={() => {
-                  setUpdateNote("Checking…");
-                  void window.noxDesktop?.checkForUpdates?.();
-                }}
-              >
-                Check for updates
+    <Section title="Updates">
+      <Row
+        label="Check for updates"
+        hint={hint}
+        control={
+          <Button type="button" variant="play" disabled={busy} onClick={() => void onCheck()}>
+            <RefreshCw className={cn("size-4", busy && "animate-spin")} />
+            {busy ? "Checking…" : "Check for updates"}
+          </Button>
+        }
+      />
+      {note ? (
+        <Row
+          label="Status"
+          hint={note}
+          control={
+            ready && desktop ? (
+              <Button type="button" variant="accent" onClick={() => void window.noxDesktop?.installUpdate?.()}>
+                Install and restart
               </Button>
-              {updateNote ? <p className="text-sm text-muted">{updateNote}</p> : null}
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="font-medium">Nox on your computer</p>
-            <p className="mt-2 mb-4 text-sm text-muted">
-              Install Nox 1.3 or newer for a Windows app that does not need the website. After that, updates install
-              themselves. Cinema audio (Atmos / DTS / AC3) plays through the built-in VLC engine.
-            </p>
-            <Button asChild variant="play">
+            ) : status.status === "available" && !desktop ? (
+              <Button asChild variant="play">
+                <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
+                  <Download className="size-4" />
+                  Get Nox {status.version}
+                </a>
+              </Button>
+            ) : null
+          }
+        />
+      ) : null}
+      {!desktop ? (
+        <Row
+          label="Windows app"
+          hint="Cinema audio (Atmos / DTS / AC3) and add-ons that stay on this PC."
+          control={
+            <Button asChild variant="muted">
               <a href={DESKTOP_RELEASES_URL} target="_blank" rel="noreferrer">
                 <Download className="size-4" />
-                Get Nox for Windows, Mac, or Linux
+                Get Nox for Windows
               </a>
             </Button>
-          </>
-        )}
-      </div>
+          }
+        />
+      ) : null}
     </Section>
   );
 }
