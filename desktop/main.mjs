@@ -248,7 +248,6 @@ if (!gotLock) {
     }));
     ipcMain.handle("nox:probe", (_event, url) => engine.probe(String(url ?? "")));
     ipcMain.handle("nox:play", (_event, opts) => {
-      void vlc.stop();
       return engine.play({
         url: String(opts?.url ?? ""),
         startAt: Number(opts?.startAt) || 0,

@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.8 fixes the Windows player. The old copy never connected the built-in player, so Play with sound appeared and nothing started. Install this Setup. After that, updates can install themselves.
+            1.3.9 plays the stream right away. Older copies sat on Starting because they waited on a helper that never answered. Install this Setup.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

@@ -84,6 +84,18 @@ type SyncState = "idle" | "listening" | "tap" | "done";
 /** Set true after the user clicks Play with sound so the next source can autoplay. */
 let playArmed = typeof window !== "undefined" && isNoxDesktop();
 
+async function withTimeout<T>(job: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer = 0;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error(label)), ms);
+  });
+  try {
+    return await Promise.race([job, timeout]);
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 export function VideoPlayer({
   src,
   kind,
@@ -195,6 +207,7 @@ export function VideoPlayer({
   const vlcTimeRef = useRef(0);
   const vlcGaveUpRef = useRef(false);
   const engineGaveUpRef = useRef(false);
+  const engineTriedRef = useRef(false);
   const engineVideoRef = useRef<"copy" | "h264">("copy");
   const vlcFallbackRef = useRef<() => void>(() => undefined);
   const engineSwapRef = useRef(false);
@@ -459,6 +472,7 @@ export function VideoPlayer({
     vlcTimeRef.current = 0;
     vlcGaveUpRef.current = false;
     engineGaveUpRef.current = false;
+    engineTriedRef.current = false;
     engineVideoRef.current = "copy";
     vlcFallbackRef.current = () => undefined;
     engineOffsetRef.current = 0;
@@ -607,19 +621,24 @@ export function VideoPlayer({
         loadBrowser();
         return;
       }
-      setEngineNote("Starting…");
+      engineTriedRef.current = true;
+      setEngineNote(null);
       const gen = engineGenRef.current;
       const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
       engineOffsetRef.current = startAt;
       setTime(startAt);
       try {
-        const result = await api.play({
-          url: src,
-          startAt,
-          audio: engineAudioRef.current || 0,
-          transcode: true,
-          video: engineVideoRef.current,
-        });
+        const result = await withTimeout(
+          api.play({
+            url: src,
+            startAt,
+            audio: engineAudioRef.current || 0,
+            transcode: true,
+            video: engineVideoRef.current,
+          }),
+          5000,
+          "engine timeout",
+        );
         if (cancelled || gen !== engineGenRef.current) return;
         engineActiveRef.current = true;
         setUsingEngine(true);
@@ -666,6 +685,12 @@ export function VideoPlayer({
         engineActiveRef.current = false;
         setUsingEngine(false);
         setEngineNote(null);
+        const video = videoRef.current;
+        const htmlStillAlive =
+          Boolean(video?.getAttribute("src")) &&
+          !String(video?.currentSrc || video?.src || "").startsWith("noxmedia:") &&
+          !video?.error;
+        if (htmlStillAlive) return;
         if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
           void loadVlc();
           return;
@@ -675,7 +700,7 @@ export function VideoPlayer({
           onPlaybackError?.();
           return;
         }
-        loadBrowser();
+        setWaiting(false);
       }
     };
 
@@ -686,24 +711,28 @@ export function VideoPlayer({
         else loadBrowser();
         return;
       }
-      setEngineNote("Starting VLC…");
+      setEngineNote(null);
       const gen = engineGenRef.current;
       const startAt = startAtRef.current > 1 ? startAtRef.current : 0;
       vlcTimeRef.current = startAt;
       setTime(startAt);
       try {
         const wrap = wrapRef.current?.getBoundingClientRect();
-        const result = await api.vlcPlay({
-          url: src,
-          startAt,
-          volume: useSettingsStore.getState().volume || 1,
-          mute: playerMutedRef.current,
-          rate,
-          fit: useSettingsStore.getState().videoFit,
-          bounds: wrap
-            ? { x: wrap.x, y: wrap.y, width: wrap.width, height: wrap.height }
-            : undefined,
-        });
+        const result = await withTimeout(
+          api.vlcPlay({
+            url: src,
+            startAt,
+            volume: useSettingsStore.getState().volume || 1,
+            mute: playerMutedRef.current,
+            rate,
+            fit: useSettingsStore.getState().videoFit,
+            bounds: wrap
+              ? { x: wrap.x, y: wrap.y, width: wrap.width, height: wrap.height }
+              : undefined,
+          }),
+          12000,
+          "vlc timeout",
+        );
         if (cancelled || gen !== engineGenRef.current) {
           void api.vlcStop?.();
           return;
@@ -795,6 +824,13 @@ export function VideoPlayer({
       }
 
       if (!engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
+        if (!engineTriedRef.current) {
+          engineTriedRef.current = true;
+          engineVideoRef.current = "copy";
+          setEngineNote(null);
+          void loadEngine();
+          return;
+        }
         if (engineVideoRef.current === "copy") {
           engineVideoRef.current = "h264";
           setEngineNote("Converting video…");
@@ -803,7 +839,7 @@ export function VideoPlayer({
         }
         engineGaveUpRef.current = true;
         if (!vlcGaveUpRef.current && desktopHasVlc()) {
-          setEngineNote("Trying VLC…");
+          setEngineNote(null);
           void loadVlc();
           return;
         }
@@ -812,7 +848,7 @@ export function VideoPlayer({
       }
       if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
         vlcGaveUpRef.current = true;
-        setEngineNote("Trying VLC…");
+        setEngineNote(null);
         void loadVlc();
         return;
       }
@@ -831,13 +867,17 @@ export function VideoPlayer({
         setTime(engineOffsetRef.current);
         setWaiting(true);
         try {
-          const result = await api.play({
-            url: src,
-            startAt: engineOffsetRef.current,
-            audio: engineAudioRef.current,
-            transcode: true,
-            video: engineVideoRef.current,
-          });
+          const result = await withTimeout(
+            api.play({
+              url: src,
+              startAt: engineOffsetRef.current,
+              audio: engineAudioRef.current,
+              transcode: true,
+              video: engineVideoRef.current,
+            }),
+            5000,
+            "engine timeout",
+          );
           if (cancelled || gen !== engineGenRef.current) return;
           video.src = result.src;
         } catch {
@@ -850,15 +890,11 @@ export function VideoPlayer({
       })();
     };
 
-    if (desktopHasEngine() && kind !== "hls") {
-      vlcGaveUpRef.current = false;
-      void loadEngine();
-    } else if (desktopHasVlc() && kind !== "hls") {
-      engineGaveUpRef.current = true;
-      void loadVlc();
-    } else {
+    if (kind === "hls") {
       vlcGaveUpRef.current = true;
       engineGaveUpRef.current = true;
+      loadBrowser();
+    } else {
       loadBrowser();
     }
 
@@ -948,7 +984,7 @@ export function VideoPlayer({
       }
       setError("This stream stalled.");
       onPlaybackError?.();
-    }, usingEngine || usingVlc ? 22_000 : 14_000);
+    }, usingEngine || usingVlc ? 18_000 : 10_000);
     return () => window.clearTimeout(timer);
   }, [waiting, error, src, onPlaybackError, usingEngine, usingVlc, bootKey]);
 
@@ -1021,6 +1057,11 @@ export function VideoPlayer({
       }
       if (silentTries.current >= 3) {
         window.clearInterval(timer);
+        if (isNoxDesktop() && !engineGaveUpRef.current && desktopHasEngine() && kind !== "hls") {
+          engineGaveUpRef.current = false;
+          vlcFallbackRef.current();
+          return;
+        }
         if (onSilentAudio) onSilentAudio();
         else onPlaybackError?.();
       }

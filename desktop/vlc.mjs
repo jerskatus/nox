@@ -219,7 +219,10 @@ export function createVlc() {
     },
     pause: () => cmd({ op: "pause" }),
     resume: () => cmd({ op: "resume" }),
-    stop: () => cmd({ op: "stop" }).catch(() => undefined),
+    stop() {
+      if (!child?.stdin?.writable) return Promise.resolve();
+      return sendLine({ op: "stop" }).catch(() => undefined);
+    },
     seek: (ms) => cmd({ op: "seek", ms }),
     setVolume: (volume, mute) => cmd({ op: "volume", volume, mute }),
     setRate: (rate) => cmd({ op: "rate", rate }),

@@ -285,7 +285,7 @@ function WatchPage() {
     );
   }
 
-  if ((kind === "http" || kind === "hls") && selected.url && isWebPlayable(selected)) {
+  if ((kind === "http" || kind === "hls") && selected.url && (desktop || isWebPlayable(selected))) {
     return (
       <>
         <NextEpisodePreload url={nextPreloadUrl} active={progressRatio > 0.5} />

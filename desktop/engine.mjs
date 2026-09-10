@@ -198,9 +198,9 @@ export function createEngine() {
       "-rw_timeout",
       "20000000",
       "-probesize",
-      "20M",
+      "1M",
       "-analyzeduration",
-      "20M",
+      "2M",
       "-user_agent",
       "Mozilla/5.0 (compatible; NoxDesktop/1.0)",
     ];
@@ -224,7 +224,7 @@ export function createEngine() {
       args.push("-c:a", "copy");
     }
     args.push("-sn", "-dn");
-    args.push("-fflags", "+genpts+discardcorrupt");
+    args.push("-fflags", "+genpts+discardcorrupt+nobuffer");
     args.push("-avoid_negative_ts", "make_zero");
     args.push("-max_muxing_queue_size", "2048");
     args.push("-movflags", "frag_keyframe+empty_moov+default_base_moof");

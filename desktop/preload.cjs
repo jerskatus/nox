@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const win32 = process.platform === "win32";
 
 contextBridge.exposeInMainWorld("noxDesktop", {
-  version: "1.3.8",
+  version: "1.3.9",
   hasEngine: true,
   hasVlc: win32,
   standalone: true,
