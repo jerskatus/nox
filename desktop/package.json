@@ -1,7 +1,7 @@
 {
   "name": "nox-desktop",
   "productName": "Nox",
-  "version": "1.3.9",
+  "version": "1.4.0",
   "private": true,
   "description": "Nox for Windows — self-contained catalog, built-in VLC, and auto-update.",
   "author": "Nox",
@@ -37,6 +37,7 @@
       "main.mjs",
       "preload.cjs",
       "engine.mjs",
+      "media-url.mjs",
       "catalog.mjs",
       "updater.mjs",
       "vlc.mjs",

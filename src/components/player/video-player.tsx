@@ -686,9 +686,11 @@ export function VideoPlayer({
         setUsingEngine(false);
         setEngineNote(null);
         const video = videoRef.current;
+        const mediaSrc = String(video?.currentSrc || video?.src || "");
         const htmlStillAlive =
           Boolean(video?.getAttribute("src")) &&
-          !String(video?.currentSrc || video?.src || "").startsWith("noxmedia:") &&
+          !mediaSrc.includes("/v/") &&
+          !mediaSrc.startsWith("noxmedia:") &&
           !video?.error;
         if (htmlStillAlive) return;
         if (!vlcGaveUpRef.current && desktopHasVlc() && kind !== "hls") {
@@ -894,7 +896,14 @@ export function VideoPlayer({
       vlcGaveUpRef.current = true;
       engineGaveUpRef.current = true;
       loadBrowser();
+    } else if (desktopHasEngine()) {
+      void loadEngine();
+    } else if (desktopHasVlc()) {
+      engineGaveUpRef.current = true;
+      void loadVlc();
     } else {
+      vlcGaveUpRef.current = true;
+      engineGaveUpRef.current = true;
       loadBrowser();
     }
 
@@ -1535,7 +1544,7 @@ export function VideoPlayer({
         className={cn("player-video", `player-video-${videoFit}`, vlcOn && "invisible")}
         poster={poster}
         playsInline
-        preload="auto"
+        preload="none"
         onPlay={() => {
           setPlaying(true);
           setWaiting(false);

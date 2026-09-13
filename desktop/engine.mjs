@@ -1,31 +1,25 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { app, protocol, session } from "electron";
+import { app } from "electron";
+import { jobIdFromUrl } from "./media-url.mjs";
+
+export { jobIdFromUrl } from "./media-url.mjs";
 
 const require = createRequire(import.meta.url);
 const root = dirname(fileURLToPath(import.meta.url));
 
 const CINEMA = /ac-?3|eac3|e-ac-3|truehd|dts|mlp|atmos|pcm_bluray/i;
+const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+const MEDIA_PORT = 17866;
 
 export function registerPrivilegedSchemes() {
-  protocol.registerSchemesAsPrivileged([
-    {
-      scheme: "noxmedia",
-      privileges: {
-        standard: true,
-        secure: true,
-        supportFetchAPI: true,
-        stream: true,
-        bypassCSP: true,
-        corsEnabled: true,
-      },
-    },
-  ]);
+  /* HTTP remux is used instead of a custom scheme. Kept so main can call it safely. */
 }
 
 export function parseAudioStreams(stderr) {
@@ -102,19 +96,6 @@ export function pickAudioIndex(tracks, preferredLang) {
   return best;
 }
 
-export function jobIdFromUrl(url) {
-  try {
-    const parsed = typeof url === "string" ? new URL(url) : url;
-    if (parsed.hostname && parsed.hostname !== "v") return parsed.hostname;
-    const parts = (parsed.pathname || "").split("/").filter(Boolean);
-    if (parsed.hostname === "v") return parts[0] || "";
-    if (parts[0] === "v") return parts[1] || "";
-    return parts[0] || "";
-  } catch {
-    return "";
-  }
-}
-
 function resolveFfmpeg() {
   const names = process.platform === "win32" ? ["ffmpeg.exe", "ffmpeg"] : ["ffmpeg"];
   const candidates = [];
@@ -156,12 +137,15 @@ function spawnFfmpeg(bin, args) {
 
 export function createEngine() {
   let bin = resolveFfmpeg();
-  /** @type {Map<string, { url: string, startAt: number, audio: number, transcode: boolean }>} */
+  /** @type {Map<string, { url: string, startAt: number, audio: number, transcode: boolean, video: string }>} */
   const jobs = new Map();
   /** @type {import('node:child_process').ChildProcess | null} */
   let proc = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let killTimer = null;
+  /** @type {import('node:http').Server | null} */
+  let mediaServer = null;
+  let mediaPort = 0;
 
   function stopProc() {
     if (killTimer) {
@@ -172,6 +156,7 @@ export function createEngine() {
     const running = proc;
     proc = null;
     try {
+      running.stdout?.unpipe();
       running.stdout?.destroy();
     } catch {
       /* already closed */
@@ -193,16 +178,20 @@ export function createEngine() {
       "1",
       "-reconnect_streamed",
       "1",
+      "-reconnect_at_eof",
+      "1",
       "-reconnect_delay_max",
       "5",
       "-rw_timeout",
       "20000000",
       "-probesize",
-      "1M",
-      "-analyzeduration",
       "2M",
+      "-analyzeduration",
+      "4M",
       "-user_agent",
-      "Mozilla/5.0 (compatible; NoxDesktop/1.0)",
+      CHROME_UA,
+      "-headers",
+      "Referer: \r\n",
     ];
     if (job.url.toLowerCase().includes(".m3u8")) {
       args.push("-protocol_whitelist", "file,http,https,tcp,tls,crypto,data,pipe");
@@ -224,7 +213,7 @@ export function createEngine() {
       args.push("-c:a", "copy");
     }
     args.push("-sn", "-dn");
-    args.push("-fflags", "+genpts+discardcorrupt+nobuffer");
+    args.push("-fflags", "+genpts+discardcorrupt");
     args.push("-avoid_negative_ts", "make_zero");
     args.push("-max_muxing_queue_size", "2048");
     args.push("-movflags", "frag_keyframe+empty_moov+default_base_moof");
@@ -235,15 +224,7 @@ export function createEngine() {
   async function probe(url) {
     if (!bin) throw new Error("ffmpeg is not installed");
     const target = assertMediaUrl(url);
-    const args = [
-      "-hide_banner",
-      "-probesize",
-      "12M",
-      "-analyzeduration",
-      "12M",
-      "-user_agent",
-      "Mozilla/5.0 (compatible; NoxDesktop/1.0)",
-    ];
+    const args = ["-hide_banner", "-probesize", "12M", "-analyzeduration", "12M", "-user_agent", CHROME_UA, "-headers", "Referer: \r\n"];
     if (target.toLowerCase().includes(".m3u8")) {
       args.push("-protocol_whitelist", "file,http,https,tcp,tls,crypto,data,pipe", "-allowed_extensions", "ALL");
     }
@@ -272,6 +253,7 @@ export function createEngine() {
 
   function play(opts) {
     if (!bin) throw new Error("ffmpeg is not installed");
+    if (!mediaPort) throw new Error("Player is not ready");
     const url = assertMediaUrl(opts.url);
     const startAt = Math.max(0, Number(opts.startAt) || 0);
     const audio = Number.isFinite(Number(opts.audio)) ? Math.max(0, Math.floor(Number(opts.audio))) : 0;
@@ -281,7 +263,7 @@ export function createEngine() {
     jobs.clear();
     const id = randomBytes(12).toString("hex");
     jobs.set(id, { url, startAt, audio, transcode, video });
-    return { src: `noxmedia://v/${id}`, transcode, video };
+    return { src: `http://127.0.0.1:${mediaPort}/v/${id}.mp4`, transcode, video };
   }
 
   function stop() {
@@ -289,45 +271,133 @@ export function createEngine() {
     jobs.clear();
   }
 
-  function handle(request) {
-    const id = jobIdFromUrl(request.url);
-    const job = jobs.get(id);
-    if (!job || !bin) return new Response("Not found", { status: 404 });
+  function serveJob(job, req, res) {
     stopProc();
     const next = spawnFfmpeg(bin, ffmpegArgs(job));
     proc = next;
-    if (!next.stdout) return new Response("Engine error", { status: 500 });
-    const body = Readable.toWeb(next.stdout);
+    if (!next.stdout) {
+      res.writeHead(500);
+      res.end("Engine error");
+      return;
+    }
+    let started = false;
+    const fail = (status, message) => {
+      if (res.headersSent) return;
+      res.writeHead(status, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" });
+      res.end(message);
+    };
+    const timer = setTimeout(() => {
+      if (!started) {
+        stopProc();
+        fail(504, "Stream took too long to open");
+      }
+    }, 20_000);
+    next.stdout.once("data", (chunk) => {
+      started = true;
+      clearTimeout(timer);
+      if (res.headersSent || res.writableEnded) return;
+      res.writeHead(200, {
+        "Content-Type": "video/mp4",
+        "Cache-Control": "no-store, no-transform",
+        "Accept-Ranges": "none",
+        "Access-Control-Allow-Origin": "*",
+        Connection: "keep-alive",
+      });
+      res.write(chunk);
+      next.stdout.pipe(res);
+    });
     next.stderr?.on("data", () => undefined);
     next.on("exit", () => {
+      clearTimeout(timer);
       if (proc === next) proc = null;
+      if (!started) fail(502, "Could not open this stream");
+      else if (!res.writableEnded) res.end();
     });
-    const abort = request.signal;
-    if (abort) {
-      abort.addEventListener(
-        "abort",
-        () => {
-          killTimer = setTimeout(() => {
-            if (proc === next) stopProc();
-          }, 500);
-        },
-        { once: true },
-      );
+    const die = () => {
+      if (killTimer) clearTimeout(killTimer);
+      killTimer = setTimeout(() => {
+        if (proc === next) stopProc();
+      }, 8000);
+    };
+    req.on("close", die);
+    res.on("close", die);
+  }
+
+  function onRequest(req, res) {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,HEAD,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+      });
+      res.end();
+      return;
     }
-    return new Response(body, {
-      status: 200,
-      headers: {
-        "content-type": "video/mp4",
-        "cache-control": "no-store",
-        "accept-ranges": "none",
-      },
+    const id = jobIdFromUrl(`http://127.0.0.1${req.url || "/"}`);
+    const job = jobs.get(id);
+    if (!job || !bin) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+    if (req.method === "HEAD") {
+      res.writeHead(200, {
+        "Content-Type": "video/mp4",
+        "Accept-Ranges": "none",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end();
+      return;
+    }
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end();
+      return;
+    }
+    serveJob(job, req, res);
+  }
+
+  function listen(port) {
+    return new Promise((resolve, reject) => {
+      const server = createServer(onRequest);
+      mediaServer = server;
+      const onError = (error) => {
+        if (error && error.code === "EADDRINUSE" && port !== 0) {
+          server.off("listening", onListen);
+          try {
+            server.close();
+          } catch {
+            /* ignore */
+          }
+          listen(0).then(resolve, reject);
+          return;
+        }
+        reject(error);
+      };
+      const onListen = () => {
+        server.off("error", onError);
+        const addr = server.address();
+        mediaPort = typeof addr === "object" && addr ? addr.port : port;
+        resolve();
+      };
+      server.once("error", onError);
+      server.once("listening", onListen);
+      server.listen(port, "127.0.0.1");
     });
   }
 
-  function attach() {
+  async function attach() {
     bin = resolveFfmpeg() || bin;
-    session.defaultSession.protocol.handle("noxmedia", (request) => handle(request));
-    app.on("before-quit", () => stop());
+    if (mediaServer && mediaPort) return;
+    await listen(MEDIA_PORT);
+    app.on("before-quit", () => {
+      stop();
+      try {
+        mediaServer?.close();
+      } catch {
+        /* ignore */
+      }
+    });
   }
 
   return {
@@ -336,6 +406,9 @@ export function createEngine() {
     },
     get available() {
       return Boolean(bin);
+    },
+    get port() {
+      return mediaPort;
     },
     probe,
     play,

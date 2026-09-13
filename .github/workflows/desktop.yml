@@ -89,7 +89,7 @@ jobs:
           body: |
             Independent Nox app — the catalog runs on this computer. No website required.
 
-            1.3.9 plays the stream right away. Older copies sat on Starting because they waited on a helper that never answered. Install this Setup.
+            1.4.0 actually plays the file. Older copies asked debrid with a fake browser name and fed Chromium a custom protocol it cannot play. Install this Setup.
 
             Windows plays Atmos / DTS / AC3 / TrueHD through built-in VLC. Nox chrome stays on top.
 

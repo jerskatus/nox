@@ -237,7 +237,11 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    engine.attach();
+    try {
+      await engine.attach();
+    } catch (error) {
+      console.error("[nox] media server failed", error);
+    }
     attachPersist();
     attachUpdater();
     ipcMain.handle("nox:info", () => ({
@@ -279,17 +283,30 @@ if (!gotLock) {
       void vlc.stop();
       installUpdate();
     });
-    session.defaultSession.setUserAgent(
-      `${session.defaultSession.getUserAgent()} NoxDesktop/${app.getVersion()}`,
-    );
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
       callback(permission === "media" || permission === "fullscreen" || permission === "notifications");
     });
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
       const headers = { ...details.requestHeaders };
-      const ua = headers["User-Agent"] ?? headers["user-agent"] ?? "";
-      if (ua && !/NoxDesktop/.test(ua)) {
-        headers["User-Agent"] = `${ua} NoxDesktop/${app.getVersion()}`;
+      let host = "";
+      try {
+        host = new URL(details.url).hostname;
+      } catch {
+        host = "";
+      }
+      const local = host === "127.0.0.1" || host === "localhost";
+      if (local) {
+        const ua = headers["User-Agent"] ?? headers["user-agent"] ?? "";
+        if (ua && !/NoxDesktop/.test(ua)) {
+          headers["User-Agent"] = `${ua} NoxDesktop/${app.getVersion()}`;
+        }
+      } else {
+        headers["User-Agent"] =
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+        delete headers.Referer;
+        delete headers.referer;
+        delete headers.Origin;
+        delete headers.origin;
       }
       callback({ requestHeaders: headers });
     });

@@ -299,7 +299,7 @@ function playMedia(opts) {
   const media = api.libvlc_media_new_location(instance, opts.url);
   if (!media) throw new Error(api.libvlc_errmsg() || "VLC could not open the URL");
   const startAt = Math.max(0, Number(opts.startAt) || 0);
-  api.libvlc_media_add_option(media, ":http-user-agent=Mozilla/5.0 (compatible; NoxDesktop/1.3.4)");
+  api.libvlc_media_add_option(media, ":http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
   api.libvlc_media_add_option(media, ":http-reconnect");
   api.libvlc_media_add_option(media, ":no-sub-autodetect-file");
   if (startAt > 0.4) api.libvlc_media_add_option(media, `:start-time=${startAt.toFixed(3)}`);
